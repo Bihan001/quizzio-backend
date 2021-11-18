@@ -6,7 +6,7 @@ interface examInterface {
   userId: string;
   image: string;
   tags: string;
-  questions: string;
+  questions: any;
   startTime: Date;
   duration: Number;
   ongoing: boolean;
@@ -16,6 +16,36 @@ interface examInterface {
 export const parseExam = (examObject: examInterface): examInterface => {
   examObject.tags = JSON.parse(examObject.tags);
   examObject.questions = JSON.parse(examObject.questions);
+  return examObject;
+};
+
+function shuffleArray(array: Array<any>) {
+  var currentIndex = array.length,
+    temporaryValue,
+    randomIndex;
+  while (0 !== currentIndex) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+    if (
+      array[randomIndex].type == 'mcq' ||
+      array[randomIndex].type == 'multipleOptions'
+    )
+      array[randomIndex].options = shuffleArray(array[randomIndex].options);
+    if (
+      array[currentIndex].type == 'mcq' ||
+      array[currentIndex].type == 'multipleOptions'
+    )
+      array[currentIndex].options = shuffleArray(array[currentIndex].options);
+  }
+  return array;
+}
+
+export const shuffleExam = (examObject: examInterface) => {
+  examObject.questions = shuffleArray(examObject.questions);
+  console.log(examObject.questions);
   return examObject;
 };
 
