@@ -24,7 +24,7 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
 
   //Exam table==================
   query =
-    'create table `Exam` ( id varchar(50) , subject varchar(50) , description longtext , image longtext ,userId varchar(50),tags json, questions json , startTime datetime , duration integer ,ongoing boolean default False,finished boolean default False ,isPrivate boolean default False ,numberOfParticipants integer, constraint exam_pk primary key(id) ,constraint fk1 foreign key (userId) references User(id) )';
+    'create table `Exam` ( id varchar(50) , name varchar(50) , description longtext , image longtext ,userId varchar(50),tags json, questions json , startTime datetime , duration integer ,ongoing boolean default False,finished boolean default False ,isPrivate boolean default False ,numberOfParticipants integer, constraint exam_pk primary key(id) ,constraint fk1 foreign key (userId) references User(id) )';
   result = await db.execute(query);
   if (!result) throw new CustomError('Exam Table not created !', 500);
   //============================
@@ -51,14 +51,14 @@ export const createExam = catchAsync(async (req: Request, res: Response) => {
   //data =>{ subject,userId,questions,startTime,duration ,isPrivate ,allowedusers}
   const db = getDb();
   let query =
-    'insert into `Exam` (`id`,`subject`,`description`,`image`,`userId`,`tags`,`questions`,`startTime`,`duration`,`isPrivate`) values(?,?,?,?,?,?,?,?,?,?)';
+    'insert into `Exam` (`id`,`name`,`description`,`image`,`userId`,`tags`,`questions`,`startTime`,`duration`,`isPrivate`) values(?,?,?,?,?,?,?,?,?,?)';
   let data = req.body || {};
   data['id'] = uuid();
   let date = new Date();
   date.setSeconds(date.getSeconds() + 30);
   const result1 = await db.execute(query, [
     data.id,
-    data.subject,
+    data.name,
     data.description || '',
     data.image || defaultBannerImage,
     data.userId,
@@ -91,7 +91,7 @@ export const editExam = catchAsync(
   async (req: CustomRequest, res: Response) => {
     // if(!req.user) throw new CustomError("User Error",404);
     const {
-      subject,
+      name,
       description,
       image,
       tags,
@@ -116,9 +116,9 @@ export const editExam = catchAsync(
     let date = new Date();
     date.setSeconds(date.getSeconds() + 60);
     let updateExam =
-      'update `Exam` set `subject`=? ,`description`=?,`image`=?,`tags` = ?, `questions`=? , `startTime`=? , `duration`=? , `isPrivate`=? where `id`=?';
+      'update `Exam` set `name`=? ,`description`=?,`image`=?,`tags` = ?, `questions`=? , `startTime`=? , `duration`=? , `isPrivate`=? where `id`=?';
     let result1 = await db.execute(updateExam, [
-      subject,
+      name,
       description || '',
       image || defaultBannerImage,
       JSON.stringify(tags),
