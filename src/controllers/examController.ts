@@ -55,7 +55,7 @@ export const getAllUpcomingExams = catchAsync(
   async (req: Request, res: Response) => {
     const db = getDb();
     let query =
-      'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,numberOfParticipants from `Exam` where `startTime`>? or `ongoing`=?';
+      'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM Exam-Participants AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants from `Exam` where `startTime`>? or `ongoing`=?';
     let [rows] = await db.execute(query, [new Date(), true]);
     console.log(rows);
     rows.map((exam: any) => {
@@ -70,7 +70,7 @@ export const getAllUpcomingExams = catchAsync(
 export const getExamDetails = catchAsync(
   async (req: Request, res: Response) => {
     const db = getDb();
-    let query = `select id,name,description,image,tags,startTime,duration,ongoing,isPrivate, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1`;
+    let query = `select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM Exam-Participants AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1`;
     let [rows] = await db.execute(query, [req.params.id]);
     parseExam(rows[0]);
     rows[0].user = JSON.parse(rows[0].user);
