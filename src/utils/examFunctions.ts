@@ -15,7 +15,8 @@ interface examInterface {
 
 export const parseExam = (examObject: examInterface): examInterface => {
   examObject.tags = JSON.parse(examObject.tags);
-  examObject.questions = JSON.parse(examObject.questions);
+  if (examObject.questions)
+    examObject.questions = JSON.parse(examObject.questions);
   return examObject;
 };
 

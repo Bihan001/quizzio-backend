@@ -6,7 +6,11 @@ import { getDb } from '../database/dbConnection';
 import scheduler from 'node-schedule';
 import { v4 as uuid } from 'uuid';
 import { CustomRequest } from '../utils/CustomInterfaces/CustomRequest';
-import { scheduleExam, destroyScheduler } from '../utils/examFunctions';
+import {
+  scheduleExam,
+  destroyScheduler,
+  parseExam,
+} from '../utils/examFunctions';
 
 const defaultBannerImage =
   'https://image.freepik.com/free-vector/online-exam-isometric-web-banner_33099-2305.jpg';
@@ -46,6 +50,34 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
   //=============================
   res.status(200).send('All tables created !');
 });
+
+export const getAllUpcomingExams = catchAsync(
+  async (req: Request, res: Response) => {
+    const db = getDb();
+    let query =
+      'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,numberOfParticipants from `Exam` where `startTime`>? or `ongoing`=?';
+    let [rows] = await db.execute(query, [new Date(), true]);
+    console.log(rows);
+    rows.map((exam: any) => {
+      exam = parseExam(exam);
+    });
+    res
+      .status(200)
+      .json(SuccessResponse(rows, 'These are upcoming and ongoing Exams !'));
+  }
+);
+
+export const getExamDetails = catchAsync(
+  async (req: Request, res: Response) => {
+    const db = getDb();
+    let query = `select id,name,description,image,tags,startTime,duration,ongoing,isPrivate, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1`;
+    let [rows] = await db.execute(query, [req.params.id]);
+    parseExam(rows[0]);
+    rows[0].user = JSON.parse(rows[0].user);
+    if (rows.length != 1) throw new CustomError('Exam not found', 500);
+    res.status(200).json(SuccessResponse(rows[0], 'Exam Found !'));
+  }
+);
 
 export const createExam = catchAsync(async (req: Request, res: Response) => {
   //data =>{ subject,userId,questions,startTime,duration ,isPrivate ,allowedusers}
