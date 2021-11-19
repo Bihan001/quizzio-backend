@@ -55,7 +55,7 @@ export const getAllUpcomingExams = catchAsync(
   async (req: Request, res: Response) => {
     const db = getDb();
     let query =
-      'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,numberOfParticipants from `Exam` where `startTime`>? or `ongoing`=?';
+      'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate from `Exam` where `startTime`>? or `ongoing`=?';
     let [rows] = await db.execute(query, [new Date(), true]);
     console.log(rows);
     rows.map((exam: any) => {

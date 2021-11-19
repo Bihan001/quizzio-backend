@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import cors from 'cors';
 import CustomError from './errors/custom-error';
 import { SuccessResponse, ErrorResponse } from './utils/response-handler';
 
@@ -9,6 +10,14 @@ import { connectDatabase } from './database/dbConnection';
 
 const app = express();
 
+app.use(
+  cors({
+    credentials: true,
+    origin: (origin, callback) => {
+      return callback(null, true);
+    },
+  })
+);
 app.use(express.json());
 require('dotenv').config();
 app.use('/exam', examRoutes);
