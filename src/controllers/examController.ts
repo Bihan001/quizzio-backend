@@ -6,7 +6,11 @@ import { getDb } from '../database/dbConnection';
 import scheduler from 'node-schedule';
 import { v4 as uuid } from 'uuid';
 import { CustomRequest } from '../utils/CustomInterfaces/CustomRequest';
-import { scheduleExam, destroyScheduler } from '../utils/examFunctions';
+import {
+  scheduleExam,
+  destroyScheduler,
+  parseExam,
+} from '../utils/examFunctions';
 
 const defaultBannerImage =
   'https://image.freepik.com/free-vector/online-exam-isometric-web-banner_33099-2305.jpg';
@@ -17,14 +21,14 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
 
   //User table===================
   query =
-    'create table User ( id varchar(50) not null, name varchar(50) , email varchar(50) ,age integer,image longtext, password longtext ,institution longtext ,gender varchar(50),phoneNumber varchar(50) ,constraint user_pk primary key(id) )';
+    'create table User ( id varchar(50) not null, name varchar(50) , email varchar(50) ,dob datetime , address longtext,image longtext, password longtext ,institution longtext ,gender varchar(50),phoneNumber varchar(50) ,constraint user_pk primary key(id) )';
   result = await db.execute(query);
   if (!result) throw new CustomError('User Table Not   created  !', 500);
   //=============================
 
   //Exam table==================
   query =
-    'create table `Exam` ( id varchar(50) , subject varchar(50) ,image longtext ,userId varchar(50),tags json, questions json , startTime datetime , duration integer ,ongoing boolean default False,finished boolean default False ,isPrivate boolean default False ,numberOfParticipants integer, constraint exam_pk primary key(id) ,constraint fk1 foreign key (userId) references User(id) )';
+    'create table `Exam` ( id varchar(50) , name varchar(50) , description longtext , image longtext ,userId varchar(50),tags json, questions json , startTime datetime , duration integer ,ongoing boolean default False,finished boolean default False ,isPrivate boolean default False ,numberOfParticipants integer, constraint exam_pk primary key(id) ,constraint fk1 foreign key (userId) references User(id) )';
   result = await db.execute(query);
   if (!result) throw new CustomError('Exam Table not created !', 500);
   //============================
@@ -47,18 +51,47 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
   res.status(200).send('All tables created !');
 });
 
+export const getAllUpcomingExams = catchAsync(
+  async (req: Request, res: Response) => {
+    const db = getDb();
+    let query =
+      "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants from `Exam` where `startTime`>? or `ongoing`=?";
+    let [rows] = await db.execute(query, [new Date(), true]);
+    console.log(rows);
+    rows.map((exam: any) => {
+      exam = parseExam(exam);
+    });
+    res
+      .status(200)
+      .json(SuccessResponse(rows, 'These are upcoming and ongoing Exams !'));
+  }
+);
+
+export const getExamDetails = catchAsync(
+  async (req: Request, res: Response) => {
+    const db = getDb();
+    let query = "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
+    let [rows] = await db.execute(query, [req.params.id]);
+    parseExam(rows[0]);
+    rows[0].user = JSON.parse(rows[0].user);
+    if (rows.length != 1) throw new CustomError('Exam not found', 500);
+    res.status(200).json(SuccessResponse(rows[0], 'Exam Found !'));
+  }
+);
+
 export const createExam = catchAsync(async (req: Request, res: Response) => {
   //data =>{ subject,userId,questions,startTime,duration ,isPrivate ,allowedusers}
   const db = getDb();
   let query =
-    'insert into `Exam` (`id`,`subject`,`image`,`userId`,`tags`,`questions`,`startTime`,`duration`,`isPrivate`) values(?,?,?,?,?,?,?,?,?)';
+    'insert into `Exam` (`id`,`name`,`description`,`image`,`userId`,`tags`,`questions`,`startTime`,`duration`,`isPrivate`) values(?,?,?,?,?,?,?,?,?,?)';
   let data = req.body || {};
   data['id'] = uuid();
   let date = new Date();
   date.setSeconds(date.getSeconds() + 30);
   const result1 = await db.execute(query, [
     data.id,
-    data.subject,
+    data.name,
+    data.description || '',
     data.image || defaultBannerImage,
     data.userId,
     JSON.stringify(data.tags),
@@ -90,7 +123,8 @@ export const editExam = catchAsync(
   async (req: CustomRequest, res: Response) => {
     // if(!req.user) throw new CustomError("User Error",404);
     const {
-      subject,
+      name,
+      description,
       image,
       tags,
       questions,
@@ -114,9 +148,10 @@ export const editExam = catchAsync(
     let date = new Date();
     date.setSeconds(date.getSeconds() + 60);
     let updateExam =
-      'update `Exam` set `subject`=? ,`image`=?,`tags` = ?, `questions`=? , `startTime`=? , `duration`=? , `isPrivate`=? where `id`=?';
+      'update `Exam` set `name`=? ,`description`=?,`image`=?,`tags` = ?, `questions`=? , `startTime`=? , `duration`=? , `isPrivate`=? where `id`=?';
     let result1 = await db.execute(updateExam, [
-      subject,
+      name,
+      description || '',
       image || defaultBannerImage,
       JSON.stringify(tags),
       JSON.stringify(questions),
