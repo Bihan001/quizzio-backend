@@ -4,11 +4,16 @@ import { CustomRequest } from '../utils/CustomInterfaces/CustomRequest';
 import CustomError from '../errors/custom-error';
 import { Response, Request, NextFunction } from 'express';
 import db, { getDb } from '../database/dbConnection';
-import { parseExam, shuffleExam } from '../utils/examFunctions';
+import {
+  parseExam,
+  shuffleExam,
+  removeCorrectOptions,
+} from '../utils/examFunctions';
 import scheduler from 'node-cron';
 import { v4 as uuid } from 'uuid';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { finished } from 'stream';
 
 const defaultDp =
   'https://www.tenforums.com/geek/gars/images/2/types/thumb_15951118880user.png';
@@ -20,7 +25,7 @@ export const getuser = catchAsync(async (req: CustomRequest, res: Response) => {
   const [rows, fields] = await db.execute(query, [id]);
   if (rows && rows.length > 0) {
     res.status(200).json(SuccessResponse(rows[0], 'User Found !'));
-    console.log(rows);
+    //console.log(rows);
   } else res.status(500).send('User Not Found !');
 });
 
@@ -30,6 +35,7 @@ export const registerUser = catchAsync(async (req: Request, res: Response) => {
   const {
     name,
     email,
+    bio,
     password,
     institution,
     phoneNumber,
@@ -53,7 +59,7 @@ export const registerUser = catchAsync(async (req: Request, res: Response) => {
   if (rows[0].userExists)
     throw new CustomError('User with this email id already exists !', 500);
   let registerUser =
-    'insert into `User` (`id`,`name`,`email`,`image`,`password`,`institution`,`phoneNumber`,`dob`,`address`,`gender`) values(?,?,?,?,?,?,?,?,?,?)';
+    'insert into `User` (`id`,`name`,`email`,`bio`,`image`,`password`,`institution`,`phoneNumber`,`dob`,`address`,`gender`) values(?,?,?,?,?,?,?,?,?,?,?)';
   const salt = await bcrypt.genSalt();
   const passwordHash = await bcrypt.hash(password, salt);
   let id = uuid();
@@ -61,12 +67,13 @@ export const registerUser = catchAsync(async (req: Request, res: Response) => {
     id,
     name,
     email,
+    bio || ' ',
     defaultDp,
     passwordHash,
     institution,
     phoneNumber,
     dob,
-    address || '',
+    address || ' ',
     gender,
   ]);
   if (result)
@@ -134,7 +141,7 @@ export const registerInExam = catchAsync(
     query =
       'select isPrivate,userId as creatorId,count(*) as examExists,finished from `Exam` where `id`=? limit 1';
     let [rows] = await db.execute(query, [examId]);
-    console.log(rows);
+    // console.log(rows);
     let { isPrivate, creatorId, examExists, finished } = rows[0];
     if (!examExists) throw new CustomError('Exam not Found', 500);
     if (creatorId === userId)
@@ -164,26 +171,49 @@ export const registerInExam = catchAsync(
 
 export const getExam = catchAsync(async (req: CustomRequest, res: Response) => {
   const db = getDb();
-  const { examId, userId } = req.body;
+  const { examId, userId } = req.query;
   let query = 'select * from `Exam` where `id`=? limit 1';
   let [examRows] = await db.execute(query, [examId]);
   if (examRows.length != 1) throw new CustomError('Exam not found !', 500);
   examRows[0] = parseExam(examRows[0]);
   shuffleExam(examRows[0]);
+  removeCorrectOptions(examRows[0]);
   query =
     'select count(*) as userRegistered,virtual from `Exam-Participants` where `participantId`=? limit 1';
   let [rows] = await db.execute(query, [userId]);
-  if (!rows[0].userRegistered)
+  if (!rows[0].userRegistered && examRows[0].isPrivate)
     throw new CustomError('User not yet Registered !', 500);
   if (rows[0].virtual)
     return res
       .status(200)
       .json(SuccessResponse(examRows[0], 'Virtual Exam Started !'));
-  if (!examRows[0].ongoing)
-    throw new CustomError('Exam has not started yet !', 500);
+  // if (!examRows[0].ongoing)
+  //   throw new CustomError('Exam has not started yet !', 500);
 
   //console.log(shuffleExam(examRows[0]));
   res.status(200).json(SuccessResponse(examRows[0], 'Exam Started !'));
 });
+
+export const submitExam = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    let query;
+    const { answers, finishTime, participantId, examId } = req.body;
+    if (!answers || !finishTime || !participantId || !examId)
+      throw new CustomError('Fields are missing !', 500);
+    query =
+      'update `Exam-Participants` set `answers`=? , `finishTime`=? where  `participantId`=?  and `examId`=?';
+    let [rows] = await db.execute(query, [
+      answers,
+      finishTime,
+      participantId,
+      examId,
+    ]);
+    console.log(rows);
+    res
+      .status(200)
+      .json(SuccessResponse(rows[0], 'Exam Submitted Successfully!'));
+  }
+);
 
 export const getExams = catchAsync(async (Req: Request, res: Response) => {});

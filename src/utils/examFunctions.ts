@@ -46,7 +46,7 @@ function shuffleArray(array: Array<any>) {
 
 export const shuffleExam = (examObject: examInterface) => {
   examObject.questions = shuffleArray(examObject.questions);
-  console.log(examObject.questions);
+  // console.log(examObject.questions);
   return examObject;
 };
 
@@ -90,4 +90,11 @@ export const scheduleOnServerRestart = async () => {
 export const destroyScheduler = (id: any) => {
   let task = scheduler.scheduledJobs[id];
   if (task) task.cancel();
+};
+
+export const removeCorrectOptions = (examObject: examInterface) => {
+  examObject.questions = [...examObject.questions].map((question) => {
+    delete question['correctOption'];
+    return question;
+  });
 };

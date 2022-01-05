@@ -21,21 +21,21 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
 
   //User table===================
   query =
-    'create table User ( id varchar(50) not null, name varchar(50) , email varchar(50) ,dob datetime , address longtext,image longtext, password longtext ,institution longtext ,gender varchar(50),phoneNumber varchar(50) ,constraint user_pk primary key(id) )';
+    'create table User ( id varchar(50) not null, name varchar(50) , email varchar(50) ,bio longtext, dob datetime , address longtext,image longtext, password longtext ,institution longtext ,gender varchar(50),phoneNumber varchar(50) ,constraint user_pk primary key(id) )';
   result = await db.execute(query);
   if (!result) throw new CustomError('User Table Not   created  !', 500);
   //=============================
 
   //Exam table==================
   query =
-    'create table `Exam` ( id varchar(50) , name varchar(50) , description longtext , image longtext ,userId varchar(50),tags json, questions json , startTime datetime , duration integer ,ongoing boolean default False,finished boolean default False ,isPrivate boolean default False ,numberOfParticipants integer, constraint exam_pk primary key(id) ,constraint fk1 foreign key (userId) references User(id) )';
+    'create table `Exam` ( id varchar(50) , name varchar(50) , description longtext , image longtext ,userId varchar(50),tags json, questions json , startTime bigint , duration integer ,ongoing boolean default False,finished boolean default False ,isPrivate boolean default False ,numberOfParticipants integer, constraint exam_pk primary key(id) ,constraint fk1 foreign key (userId) references User(id) )';
   result = await db.execute(query);
   if (!result) throw new CustomError('Exam Table not created !', 500);
   //============================
 
   //Exam-Participants table========
   query =
-    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finsihTime datetime,virtual boolean default False,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
+    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,virtual boolean default False,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
   result = await db.execute(query);
   if (!result)
     throw new CustomError('Exam-Participants table not created!', 500);
@@ -55,7 +55,7 @@ export const getAllUpcomingExams = catchAsync(
   async (req: Request, res: Response) => {
     const db = getDb();
     let query =
-      "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants from `Exam` where `startTime`>? or `ongoing`=?";
+      'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants from `Exam` where `startTime`>? or `ongoing`=?';
     let [rows] = await db.execute(query, [new Date(), true]);
     console.log(rows);
     rows.map((exam: any) => {
@@ -70,7 +70,8 @@ export const getAllUpcomingExams = catchAsync(
 export const getExamDetails = catchAsync(
   async (req: Request, res: Response) => {
     const db = getDb();
-    let query = "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
+    let query =
+      "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
     let [rows] = await db.execute(query, [req.params.id]);
     parseExam(rows[0]);
     rows[0].user = JSON.parse(rows[0].user);
@@ -80,28 +81,25 @@ export const getExamDetails = catchAsync(
 );
 
 export const createExam = catchAsync(async (req: Request, res: Response) => {
-  //data =>{ subject,userId,questions,startTime,duration ,isPrivate ,allowedusers}
   const db = getDb();
   let query =
     'insert into `Exam` (`id`,`name`,`description`,`image`,`userId`,`tags`,`questions`,`startTime`,`duration`,`isPrivate`) values(?,?,?,?,?,?,?,?,?,?)';
   let data = req.body || {};
   data['id'] = uuid();
-  let date = new Date();
-  date.setSeconds(date.getSeconds() + 30);
   const result1 = await db.execute(query, [
     data.id,
     data.name,
-    data.description || '',
+    data.description || ' ',
     data.image || defaultBannerImage,
     data.userId,
     JSON.stringify(data.tags),
     JSON.stringify(data.questions),
-    date,
+    data.startTime,
     data.duration,
     data.isPrivate,
   ]);
   if (!result1) throw new CustomError('Exam not created !', 500);
-  if (data.isPrivate) {
+  if (data.isPrivate && data.allowedUsers.length > 0) {
     query = 'insert into `Private-Exam-Emails` (`examId`,`email`) values ';
     let queryArray: any = [];
     data.allowedUsers.map((allowedUserEmail: String) => {
@@ -115,8 +113,9 @@ export const createExam = catchAsync(async (req: Request, res: Response) => {
         500
       );
   }
+
   res.status(200).send('Exam  Created');
-  scheduleExam(data.id, date, data.duration);
+  scheduleExam(data.id, data.date, data.duration);
 });
 
 export const editExam = catchAsync(
@@ -167,7 +166,7 @@ export const editExam = catchAsync(
     if (!result2)
       throw new CustomError('Delete from Private-Exam-Emails failed !', 500);
 
-    if (isPrivate) {
+    if (isPrivate && allowedUsers.length > 0) {
       let query =
         'insert into `Private-Exam-Emails` (`examId`,`email`) values ';
       let queryArray: any = [];
