@@ -1,11 +1,10 @@
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import CustomError from './errors/custom-error';
 import { SuccessResponse, ErrorResponse } from './utils/response-handler';
-
 import examRoutes from './routes/api/exam/routes';
 import userRoutes from './routes/api/user/routes';
-
 import { connectDatabase } from './database/dbConnection';
 
 const app = express();
