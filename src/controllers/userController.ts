@@ -4,11 +4,16 @@ import { CustomRequest } from '../utils/CustomInterfaces/CustomRequest';
 import CustomError from '../errors/custom-error';
 import { Response, Request, NextFunction } from 'express';
 import db, { getDb } from '../database/dbConnection';
-import { parseExam, shuffleExam } from '../utils/examFunctions';
+import {
+  parseExam,
+  shuffleExam,
+  removeCorrectOptions,
+} from '../utils/examFunctions';
 import scheduler from 'node-cron';
 import { v4 as uuid } from 'uuid';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { finished } from 'stream';
 
 const defaultDp =
   'https://www.tenforums.com/geek/gars/images/2/types/thumb_15951118880user.png';
@@ -172,6 +177,7 @@ export const getExam = catchAsync(async (req: CustomRequest, res: Response) => {
   if (examRows.length != 1) throw new CustomError('Exam not found !', 500);
   examRows[0] = parseExam(examRows[0]);
   shuffleExam(examRows[0]);
+  removeCorrectOptions(examRows[0]);
   query =
     'select count(*) as userRegistered,virtual from `Exam-Participants` where `participantId`=? limit 1';
   let [rows] = await db.execute(query, [userId]);
@@ -187,5 +193,27 @@ export const getExam = catchAsync(async (req: CustomRequest, res: Response) => {
   //console.log(shuffleExam(examRows[0]));
   res.status(200).json(SuccessResponse(examRows[0], 'Exam Started !'));
 });
+
+export const submitExam = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    let query;
+    const { answers, finishTime, participantId, examId } = req.body;
+    if (!answers || !finishTime || !participantId || !examId)
+      throw new CustomError('Fields are missing !', 500);
+    query =
+      'update `Exam-Participants` set `answers`=? , `finishTime`=? where  `participantId`=?  and `examId`=?';
+    let [rows] = await db.execute(query, [
+      answers,
+      finishTime,
+      participantId,
+      examId,
+    ]);
+    console.log(rows);
+    res
+      .status(200)
+      .json(SuccessResponse(rows[0], 'Exam Submitted Successfully!'));
+  }
+);
 
 export const getExams = catchAsync(async (Req: Request, res: Response) => {});

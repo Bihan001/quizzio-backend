@@ -11,5 +11,6 @@ router.post('/logout', auth, userController.logoutUser);
 router.post('/edit', upload.single('image'), userController.editUser);
 router.get('/get-exam', userController.getExam);
 router.post('/register-in-exam', userController.registerInExam);
+router.post('/submit-exam', userController.submitExam);
 
 export default router;
