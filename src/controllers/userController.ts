@@ -76,23 +76,21 @@ export const registerUser = catchAsync(async (req: Request, res: Response) => {
     address || ' ',
     gender,
   ]);
+  const user = {
+    id,
+    name,
+    email,
+    bio,
+    image: defaultDp,
+    institution,
+    phoneNumber,
+    dob,
+    address: address || ' ',
+    gender,
+  };
+  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET!);
   if (result)
-    res.status(200).json(
-      SuccessResponse(
-        {
-          id,
-          name,
-          email,
-          image: defaultDp,
-          institution,
-          phoneNumber,
-          dob,
-          address,
-          gender,
-        },
-        'User Inserted !'
-      )
-    );
+    res.status(200).json(SuccessResponse({ token, user }, 'User Inserted !'));
   else throw new CustomError('User not inserted!', 500);
 });
 //==============================================
@@ -108,13 +106,10 @@ export const loginUser = catchAsync(async (req: Request, res: Response) => {
   if (rows.length != 1) throw new CustomError('No User with this Email!', 500);
   const user = rows[0];
   const isMatch = await bcrypt.compare(password, user.password);
+  delete user.password;
   if (!isMatch) throw new CustomError("Password does'nt match !", 404);
   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET!);
-  res
-    .status(200)
-    .json(
-      SuccessResponse({ token: 'Bearer ' + token, user }, 'User Logged in!')
-    );
+  res.status(200).json(SuccessResponse({ token, user }, 'User Logged in!'));
 });
 //==============================================
 
