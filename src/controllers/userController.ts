@@ -204,12 +204,13 @@ export const submitExam = catchAsync(
     query =
       'update `Exam-Participants` set `answers`=? , `finishTime`=? where  `participantId`=?  and `examId`=?';
     let [rows] = await db.execute(query, [
-      answers,
+      JSON.stringify(answers),
       finishTime,
       participantId,
       examId,
     ]);
-    console.log(rows);
+    if (!rows.affectedRows)
+      throw new CustomError('Error occured while submitting! :(', 500);
     res
       .status(200)
       .json(SuccessResponse(rows[0], 'Exam Submitted Successfully!'));
