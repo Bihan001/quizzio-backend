@@ -15,8 +15,7 @@ interface examInterface {
 
 export const parseExam = (examObject: examInterface): examInterface => {
   examObject.tags = JSON.parse(examObject.tags);
-  if (examObject.questions)
-    examObject.questions = JSON.parse(examObject.questions);
+  if (examObject.questions) examObject.questions = JSON.parse(examObject.questions);
   return examObject;
 };
 
@@ -30,15 +29,9 @@ function shuffleArray(array: Array<any>) {
     temporaryValue = array[currentIndex];
     array[currentIndex] = array[randomIndex];
     array[randomIndex] = temporaryValue;
-    if (
-      array[randomIndex].type == 'mcq' ||
-      array[randomIndex].type == 'multipleOptions'
-    )
+    if (array[randomIndex].type == 'mcq' || array[randomIndex].type == 'multipleOptions')
       array[randomIndex].options = shuffleArray(array[randomIndex].options);
-    if (
-      array[currentIndex].type == 'mcq' ||
-      array[currentIndex].type == 'multipleOptions'
-    )
+    if (array[currentIndex].type == 'mcq' || array[currentIndex].type == 'multipleOptions')
       array[currentIndex].options = shuffleArray(array[currentIndex].options);
   }
   return array;
@@ -51,6 +44,7 @@ export const shuffleExam = (examObject: examInterface) => {
 };
 
 export const scheduleExam = (id: String, date: Date, duration: Number) => {
+  date = new Date(date);
   scheduler.scheduleJob(id + 'start', date, () => {
     startExam(id);
     destroyScheduler(id + 'start');
@@ -77,14 +71,11 @@ export const evaluateExam = (id: String) => {
 
 export const scheduleOnServerRestart = async () => {
   const db = getDb();
-  let query =
-    'select `id`,`startTime`,`duration`  from `Exam` where `startTime`>?';
+  let query = 'select `id`,`startTime`,`duration`  from `Exam` where `startTime`>?';
   let [rows] = await db.execute(query, [new Date()]);
   if (rows.length > 0) {
     console.log(rows);
-    rows.map((exam: examInterface) =>
-      scheduleExam(exam.id, exam.startTime, exam.duration)
-    );
+    rows.map((exam: examInterface) => scheduleExam(exam.id, exam.startTime, exam.duration));
   } else console.log('No Exams to schedule!');
 };
 export const destroyScheduler = (id: any) => {

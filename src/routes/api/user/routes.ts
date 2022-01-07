@@ -4,13 +4,12 @@ import auth from '../../../middlewares/auth';
 import upload from '../../../utils/multer';
 
 const router = express.Router();
-router.post('/get', auth, userController.getuser);
-router.post('/register', userController.registerUser);
+
 router.post('/login', userController.loginUser);
+router.post('/register', userController.registerUser);
 router.post('/logout', auth, userController.logoutUser);
-router.post('/edit', upload.single('image'), userController.editUser);
-router.get('/get-exam', userController.getExam);
-router.post('/register-in-exam', userController.registerInExam);
-router.post('/submit-exam', userController.submitExam);
+router.get('/current', auth, userController.getCurrentUser);
+router.get('/:id', userController.getuser);
+router.patch('/', auth, upload.single('image'), userController.editUser);
 
 export default router;

@@ -4,9 +4,12 @@ import auth from '../../../middlewares/auth';
 
 const router = express.Router();
 router.get('/create-tables', examController.createTables);
-router.post('/create', examController.createExam);
-router.post('/edit', examController.editExam);
-router.get('/all-upcoming-exams', examController.getAllUpcomingExams);
-router.get('/details/:id', examController.getExamDetails);
+router.post('/create', auth, examController.createExam);
+router.patch('/:id', auth, examController.editExam);
+router.get('/upcoming', examController.getAllUpcomingExams);
+router.get('/:id', examController.getExamDetails);
+router.get('/:id/start', auth, examController.startExam);
+router.post('/register', auth, examController.registerInExam);
+router.post('/submit', auth, examController.submitExam);
 
 export default router;
