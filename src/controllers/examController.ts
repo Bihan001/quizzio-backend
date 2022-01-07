@@ -52,21 +52,19 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
   res.status(200).send('All tables created !');
 });
 
-export const getAllUpcomingExams = catchAsync(
-  async (req: Request, res: Response) => {
-    const db = getDb();
-    let query =
-      'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants from `Exam` where `startTime`>? or `ongoing`=?';
-    let [rows] = await db.execute(query, [new Date(), true]);
-    console.log(rows);
-    rows.map((exam: any) => {
-      exam = parseExam(exam);
-    });
-    res
-      .status(200)
-      .json(SuccessResponse(rows, 'These are upcoming and ongoing Exams !'));
-  }
-);
+export const getExams = catchAsync(async (req: Request, res: Response) => {
+  const db = getDb();
+  let query =
+    'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants from `Exam`';
+  let [rows] = await db.execute(query);
+  console.log(rows);
+  rows.map((exam: any) => {
+    exam = parseExam(exam);
+  });
+  res
+    .status(200)
+    .json(SuccessResponse(rows, 'These are upcoming and ongoing Exams !'));
+});
 
 export const getExamDetails = catchAsync(
   async (req: Request, res: Response) => {
