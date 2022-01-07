@@ -3,6 +3,8 @@ import * as examController from '../../../controllers/examController';
 import auth from '../../../middlewares/auth';
 
 const router = express.Router();
+router.get('/tags', examController.getTags);
+router.get('/question-types', examController.getQuestionTypes);
 router.get('/create-tables', examController.createTables);
 router.post('/create', auth, examController.createExam);
 router.patch('/:id', auth, examController.editExam);

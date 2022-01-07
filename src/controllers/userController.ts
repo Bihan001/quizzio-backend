@@ -8,11 +8,14 @@ import { v4 as uuid } from 'uuid';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
-const defaultDp = 'https://www.tenforums.com/geek/gars/images/2/types/thumb_15951118880user.png';
+const defaultDp =
+  'https://www.tenforums.com/geek/gars/images/2/types/thumb_15951118880user.png';
 
-export const getCurrentUser = catchAsync(async (req: CustomRequest, res: Response) => {
-  return res.status(200).json(req.user);
-});
+export const getCurrentUser = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    return res.status(200).json(req.user);
+  }
+);
 
 export const getuser = catchAsync(async (req: CustomRequest, res: Response) => {
   const db = getDb();
@@ -28,12 +31,32 @@ export const getuser = catchAsync(async (req: CustomRequest, res: Response) => {
 //Register =====================================
 export const registerUser = catchAsync(async (req: Request, res: Response) => {
   const db = getDb();
-  const { name, email, bio, password, institution, phoneNumber, dob, address, gender } = req.body;
-  if (!name || !email || !password || !institution || !phoneNumber || !dob || !gender)
+  const {
+    name,
+    email,
+    bio,
+    password,
+    institution,
+    phoneNumber,
+    dob,
+    address,
+    gender,
+  } = req.body;
+  if (
+    !name ||
+    !email ||
+    !password ||
+    !institution ||
+    !phoneNumber ||
+    !dob ||
+    !gender
+  )
     throw new CustomError('Some Fields are missing !', 500);
-  let findByEmail = 'select count(*) as userExists from `User` where `email`=? limit 1';
+  let findByEmail =
+    'select count(*) as userExists from `User` where `email`=? limit 1';
   let [rows] = await db.execute(findByEmail, [email]);
-  if (rows[0].userExists) throw new CustomError('User with this email id already exists !', 500);
+  if (rows[0].userExists)
+    throw new CustomError('User with this email id already exists !', 500);
   let registerUser =
     'insert into `User` (`id`,`name`,`email`,`bio`,`image`,`password`,`institution`,`phoneNumber`,`dob`,`address`,`gender`) values(?,?,?,?,?,?,?,?,?,?,?)';
   const salt = await bcrypt.genSalt();
@@ -65,7 +88,8 @@ export const registerUser = catchAsync(async (req: Request, res: Response) => {
     gender,
   };
   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET!);
-  if (result) res.status(200).json(SuccessResponse({ token, user }, 'User Inserted !'));
+  if (result)
+    res.status(200).json(SuccessResponse({ token, user }, 'User Inserted !'));
   else throw new CustomError('User not inserted!', 500);
 });
 //==============================================
@@ -74,7 +98,8 @@ export const registerUser = catchAsync(async (req: Request, res: Response) => {
 export const loginUser = catchAsync(async (req: Request, res: Response) => {
   const db = getDb();
   const { email, password } = req.body;
-  if (!email || !password) throw new CustomError('Some Fields are missing !', 500);
+  if (!email || !password)
+    throw new CustomError('Some Fields are missing !', 500);
   let findByEmail = 'select * from `User` where `email`=?';
   let [rows, fields] = await db.execute(findByEmail, [email]);
   if (rows.length != 1) throw new CustomError('No User with this Email!', 500);
@@ -88,15 +113,30 @@ export const loginUser = catchAsync(async (req: Request, res: Response) => {
 //==============================================
 
 //logout ========================================
-export const logoutUser = catchAsync(async (req: CustomRequest, res: Response) => {
-  res.status(200).send('Logout Successfull !');
-});
+export const logoutUser = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    res.status(200).send('Logout Successfull !');
+  }
+);
 //================================================
 
 //edit==========================================
-export const editUser = catchAsync(async (req: CustomRequest, res: Response) => {
-  const db = getDb();
-  const userId = req.user?.id;
-  return res.status(200).json(SuccessResponse(req.user, 'User Updated!'));
-});
+export const editUser = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    const userId = req.user?.id;
+    return res.status(200).json(SuccessResponse(req.user, 'User Updated!'));
+  }
+);
 //==============================================
+
+export const getExamHosted = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    const userId = req.user?.id;
+    let query =
+      'select id,name,description,image,userId,tags,startTime,duration,ongoing,finished,isPrivate from `Exam` where `userId`=?';
+    const [rows] = await db.execute(query, [userId]);
+    res.status(200).json(SuccessResponse(rows, 'The Exam hosted are'));
+  }
+);
