@@ -140,3 +140,17 @@ export const getExamHosted = catchAsync(
     res.status(200).json(SuccessResponse(rows, 'The Exam hosted are'));
   }
 );
+
+export const getExamGiven = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    const userId = req.user?.id;
+    console.log(req.user);
+    const query =
+      'select e.* from `Exam` as e,`Exam-Participants` as ep where ep.`examId`=e.`id` and ep.`participantId`=?';
+    const [rows] = await db.execute(query, [
+      '97d3a5f6-67c5-43cd-aa0b-001cc84a467d',
+    ]);
+    res.status(200).json(SuccessResponse(rows, 'Exams given are : '));
+  }
+);
