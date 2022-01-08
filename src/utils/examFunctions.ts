@@ -1,21 +1,17 @@
 import scheduler from 'node-schedule';
 import { getDb } from '../database/dbConnection';
-
-interface examInterface {
-  id: string;
-  userId: string;
-  image: string;
-  tags: string;
-  questions: any;
-  startTime: Date;
-  duration: Number;
-  ongoing: boolean;
-  finished: boolean;
-}
+import {
+  participantDataInterface,
+  answerInterface,
+  answersObjInterface,
+} from './CustomInterfaces/ParticipantDataInterfaces';
+import { examInterface } from './CustomInterfaces/ExamInterface';
+import { evaluateQuestion } from './questionFunctions';
 
 export const parseExam = (examObject: examInterface): examInterface => {
   examObject.tags = JSON.parse(examObject.tags);
-  if (examObject.questions) examObject.questions = JSON.parse(examObject.questions);
+  if (examObject.questions)
+    examObject.questions = JSON.parse(examObject.questions);
   return examObject;
 };
 
@@ -29,9 +25,15 @@ function shuffleArray(array: Array<any>) {
     temporaryValue = array[currentIndex];
     array[currentIndex] = array[randomIndex];
     array[randomIndex] = temporaryValue;
-    if (array[randomIndex].type == 'mcq' || array[randomIndex].type == 'multipleOptions')
+    if (
+      array[randomIndex].type == 'mcq' ||
+      array[randomIndex].type == 'multipleOptions'
+    )
       array[randomIndex].options = shuffleArray(array[randomIndex].options);
-    if (array[currentIndex].type == 'mcq' || array[currentIndex].type == 'multipleOptions')
+    if (
+      array[currentIndex].type == 'mcq' ||
+      array[currentIndex].type == 'multipleOptions'
+    )
       array[currentIndex].options = shuffleArray(array[currentIndex].options);
   }
   return array;
@@ -65,17 +67,16 @@ export const startExam = async (id: String) => {
   else console.log(id, ' Error occured to start Exam');
 };
 
-export const evaluateExam = (id: String) => {
-  const db = getDb();
-};
-
 export const scheduleOnServerRestart = async () => {
   const db = getDb();
-  let query = 'select `id`,`startTime`,`duration`  from `Exam` where `startTime`>?';
+  let query =
+    'select `id`,`startTime`,`duration`  from `Exam` where `startTime`>?';
   let [rows] = await db.execute(query, [new Date()]);
   if (rows.length > 0) {
     console.log(rows);
-    rows.map((exam: examInterface) => scheduleExam(exam.id, exam.startTime, exam.duration));
+    rows.map((exam: examInterface) =>
+      scheduleExam(exam.id, exam.startTime, exam.duration)
+    );
   } else console.log('No Exams to schedule!');
 };
 export const destroyScheduler = (id: any) => {
@@ -88,4 +89,49 @@ export const removeCorrectOptions = (examObject: examInterface) => {
     delete question['correctOption'];
     return question;
   });
+};
+
+export const evaluateParticipantData = (
+  examData: examInterface,
+  participantAnswers: answersObjInterface
+): Number => {
+  console.log(participantAnswers, ' ', examData.questions);
+  let totalScore = 0;
+  Object.keys(participantAnswers).map((key) => {
+    let answer = participantAnswers[key];
+    let question = examData.questions[key];
+    if (!question || !answer) totalScore += 0;
+    else {
+      totalScore += evaluateQuestion[question.type](question, answer);
+    }
+  });
+  return totalScore;
+};
+
+// Note : Evaluate exam modifies question data from arrays to hashmaps for algorithim purposes!
+export const evaluateExam = async (
+  id: String | undefined
+): Promise<boolean> => {
+  const db = getDb();
+  let query;
+  query = 'select * from `Exam` where id=? limit 1';
+  const [examRows] = await db.execute(query, [id]);
+  if (!examRows) return false;
+  let examData: examInterface = parseExam(examRows[0]);
+  let questionsObj: any = {};
+  examData.questions.map((question: any) => {
+    questionsObj[question.id] = question;
+  });
+  examData.questions = questionsObj;
+  query = 'select * from `Exam-Participants` where `examId`=?';
+  const [participantRows] = await db.execute(query, [id]);
+  participantRows.map((data: participantDataInterface) => {
+    let participantAnswers: answersObjInterface = JSON.parse(data.answers);
+    let totalScore: Number = evaluateParticipantData(
+      examData,
+      participantAnswers
+    );
+    console.log(data.participantId, ' got : ', totalScore);
+  });
+  return true;
 };

@@ -11,6 +11,7 @@ import {
   parseExam,
   shuffleExam,
   removeCorrectOptions,
+  evaluateExam,
 } from '../utils/examFunctions';
 
 const defaultBannerImage =
@@ -274,6 +275,14 @@ export const submitExam = catchAsync(
     res
       .status(200)
       .json(SuccessResponse(rows[0], 'Exam Submitted Successfully!'));
+  }
+);
+
+export const forceEvaluateExam = catchAsync(
+  async (req: Request, res: Response) => {
+    const id: any = req.query.id;
+    if (await evaluateExam(id)) res.status(200).send('Evaluation Completed!');
+    else throw new CustomError('Error occured while evaluating', 500);
   }
 );
 
