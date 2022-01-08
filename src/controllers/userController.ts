@@ -148,9 +148,7 @@ export const getExamGiven = catchAsync(
     console.log(req.user);
     const query =
       'select e.* from `Exam` as e,`Exam-Participants` as ep where ep.`examId`=e.`id` and ep.`participantId`=?';
-    const [rows] = await db.execute(query, [
-      '97d3a5f6-67c5-43cd-aa0b-001cc84a467d',
-    ]);
+    const [rows] = await db.execute(query, [userId]);
     res.status(200).json(SuccessResponse(rows, 'Exams given are : '));
   }
 );
