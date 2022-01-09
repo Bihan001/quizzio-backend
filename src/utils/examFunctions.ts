@@ -45,14 +45,14 @@ export const shuffleExam = (examObject: examInterface) => {
   return examObject;
 };
 
-export const scheduleExam = (id: String, date: Date, duration: Number) => {
-  date = new Date(date);
-  scheduler.scheduleJob(id + 'start', date, () => {
+export const scheduleExam = (id: String, date: number, duration: number) => {
+  //date = new Date(date);
+  scheduler.scheduleJob(id + 'start', new Date(date), () => {
     startExam(id);
     destroyScheduler(id + 'start');
   });
-  date.setSeconds(date.getSeconds() + 15);
-  scheduler.scheduleJob(id + 'end', date, () => {
+
+  scheduler.scheduleJob(id + 'end', new Date(date + duration), () => {
     evaluateExam(id);
     console.log(id, ' Ended ');
     destroyScheduler(id + 'end');
@@ -70,8 +70,8 @@ export const startExam = async (id: String) => {
 export const scheduleOnServerRestart = async () => {
   const db = getDb();
   let query =
-    'select `id`,`startTime`,`duration`  from `Exam` where `startTime`>?';
-  let [rows] = await db.execute(query, [new Date()]);
+    'select `id`,`startTime`,`duration`  from `Exam` where `startTime`+`duration`>=?';
+  let [rows] = await db.execute(query, [new Date().getTime()]);
   if (rows.length > 0) {
     console.log(rows);
     rows.map((exam: examInterface) =>
@@ -125,23 +125,25 @@ export const evaluateExam = async (
   examData.questions = questionsObj;
   query = 'select * from `Exam-Participants` where `examId`=?';
   const [participantRows] = await db.execute(query, [id]);
-  let updateQuery = 'update `Exam-Participants` set `totalScore`= (case ';
-  participantRows.map((data: participantDataInterface) => {
-    let participantAnswers: answersObjInterface = JSON.parse(
-      data.answers || '{}'
-    );
-    let totalScore: Number = evaluateParticipantData(
-      examData,
-      participantAnswers
-    );
-    updateQuery +=
-      " when `participantId`='" + data.participantId + "' then " + totalScore;
-    console.log(data.participantId, ' got : ', totalScore);
-  });
-  updateQuery += " end) where `examId`='" + id + "';";
-  let [rows] = await db.execute(updateQuery);
-  if (!rows.affectedRows) return false;
-  query = 'update `Exam` set `ongoing`=? where `id`=?';
-  [rows] = await db.execute(query, [false, id]);
+  if (participantRows.length > 0) {
+    let updateQuery = 'update `Exam-Participants` set `totalScore`= (case ';
+    participantRows.map((data: participantDataInterface) => {
+      let participantAnswers: answersObjInterface = JSON.parse(
+        data.answers || '{}'
+      );
+      let totalScore: Number = evaluateParticipantData(
+        examData,
+        participantAnswers
+      );
+      updateQuery +=
+        " when `participantId`='" + data.participantId + "' then " + totalScore;
+      console.log(data.participantId, ' got : ', totalScore);
+    });
+    updateQuery += " end) where `examId`='" + id + "';";
+    let [rows] = await db.execute(updateQuery);
+    if (!rows.affectedRows) return false;
+  }
+  query = 'update `Exam` set `ongoing`=?,`finished`=? where `id`=?';
+  await db.execute(query, [false, true, id]);
   return true;
 };

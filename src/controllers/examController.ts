@@ -58,7 +58,6 @@ export const getExams = catchAsync(async (req: Request, res: Response) => {
   let query =
     'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants from `Exam`';
   let [rows] = await db.execute(query);
-  console.log(rows);
   rows.map((exam: any) => {
     exam = parseExam(exam);
   });
@@ -240,14 +239,15 @@ export const startExam = catchAsync(
     query =
       'select count(*) as userRegistered,virtual from `Exam-Participants` where `participantId`=? limit 1';
     let [rows] = await db.execute(query, [userId]);
-    if (!rows[0].userRegistered && examRows[0].isPrivate)
+    console.log(rows);
+    if (!rows[0].userRegistered)
       throw new CustomError('User not yet Registered !', 500);
     if (rows[0].virtual)
       return res
         .status(200)
         .json(SuccessResponse(examRows[0], 'Virtual Exam Started !'));
-    // if (!examRows[0].ongoing)
-    //   throw new CustomError('Exam has not started yet !', 500);
+    if (!examRows[0].ongoing)
+      throw new CustomError('Exam has not started yet !', 500);
 
     //console.log(shuffleExam(examRows[0]));
     res.status(200).json(SuccessResponse(examRows[0], 'Exam Started !'));

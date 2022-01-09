@@ -4,8 +4,8 @@ export interface examInterface {
   image: string;
   tags: string;
   questions: any;
-  startTime: Date;
-  duration: Number;
+  startTime: number;
+  duration: number;
   ongoing: boolean;
   finished: boolean;
 }
