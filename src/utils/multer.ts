@@ -1,4 +1,7 @@
 import multer from 'multer';
+require('dotenv').config();
+
+const fileTypes = ['image/jpeg', 'image/png'];
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -10,7 +13,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: Function) => {
-  if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+  if (fileTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb({ message: 'File format not supported' }, false);

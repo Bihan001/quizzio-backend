@@ -5,6 +5,7 @@ import { SuccessResponse, ErrorResponse } from './utils/response-handler';
 
 import examRoutes from './routes/api/exam/routes';
 import userRoutes from './routes/api/user/routes';
+import utilsRoutes from './routes/api/utils/routes';
 
 import { connectDatabase } from './database/dbConnection';
 
@@ -22,6 +23,7 @@ app.use(express.json());
 require('dotenv').config();
 app.use('/exam', examRoutes);
 app.use('/user', userRoutes);
+app.use('/utils', utilsRoutes);
 
 //connecting database
 connectDatabase();
