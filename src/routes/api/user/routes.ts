@@ -9,8 +9,8 @@ router.post('/login', userController.loginUser);
 router.post('/register', userController.registerUser);
 router.post('/logout', auth, userController.logoutUser);
 router.get('/current', auth, userController.getCurrentUser);
-router.get('/exam-hosted', auth, userController.getExamHosted);
-router.get('/exam-given', auth, userController.getExamGiven);
+router.get('/exams-hosted', auth, userController.getExamHosted);
+router.get('/exams-given', auth, userController.getExamGiven);
 router.get('/:id', userController.getuser);
 router.patch('/', auth, upload.single('image'), userController.editUser);
 

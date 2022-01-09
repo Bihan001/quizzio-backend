@@ -125,13 +125,23 @@ export const evaluateExam = async (
   examData.questions = questionsObj;
   query = 'select * from `Exam-Participants` where `examId`=?';
   const [participantRows] = await db.execute(query, [id]);
+  let updateQuery = 'update `Exam-Participants` set `totalScore`= (case ';
   participantRows.map((data: participantDataInterface) => {
-    let participantAnswers: answersObjInterface = JSON.parse(data.answers);
+    let participantAnswers: answersObjInterface = JSON.parse(
+      data.answers || '{}'
+    );
     let totalScore: Number = evaluateParticipantData(
       examData,
       participantAnswers
     );
+    updateQuery +=
+      " when `participantId`='" + data.participantId + "' then " + totalScore;
     console.log(data.participantId, ' got : ', totalScore);
   });
+  updateQuery += " end) where `examId`='" + id + "';";
+  let [rows] = await db.execute(updateQuery);
+  if (!rows.affectedRows) return false;
+  query = 'update `Exam` set `ongoing`=? where `id`=?';
+  [rows] = await db.execute(query, [false, id]);
   return true;
 };
