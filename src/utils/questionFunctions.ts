@@ -3,7 +3,7 @@ import {
   multipleOptionsInterface,
   fillInTheBlanksInterface,
   evaluateQuestionInterface,
-} from './CustomInterfaces/questionInterfaces';
+} from './CustomInterfaces/QuestionInterfaces';
 import { examInterface } from './CustomInterfaces/ExamInterface';
 import { answerInterface } from './CustomInterfaces/ParticipantDataInterfaces';
 
