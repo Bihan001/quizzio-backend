@@ -1,5 +1,5 @@
 import scheduler from 'node-schedule';
-import { getDb } from '../database/dbConnection';
+import db, { getDb } from '../database/dbConnection';
 import {
   participantDataInterface,
   answerInterface,
@@ -48,7 +48,7 @@ export const shuffleExam = (examObject: examInterface) => {
   return examObject;
 };
 
-export const scheduleExam = (id: String, date: number, duration: number) => {
+export const scheduleExam = (id: string, date: number, duration: number) => {
   //date = new Date(date);
   scheduler.scheduleJob(id + 'start', new Date(date), () => {
     startExam(id);
@@ -111,7 +111,11 @@ export const evaluateParticipantData = (
   return totalScore;
 };
 
-const evaluateRanking = async (totalRankingData: participantRankingData[]) => {
+const evaluateRanking = async (
+  examId: string | undefined,
+  totalRankingData: participantRankingData[]
+) => {
+  const db = getDb();
   totalRankingData.sort(
     (a: participantRankingInterface, b: participantRankingInterface) => {
       if (a.totalScore > b.totalScore) return -1;
@@ -123,12 +127,22 @@ const evaluateRanking = async (totalRankingData: participantRankingData[]) => {
       }
     }
   );
-  console.log('rank sorted data is:', totalRankingData);
-  throw new CustomError('Ranking error!', 500);
+  // console.log('rank sorted data is:', totalRankingData);
+  let updateQuery = 'update `Exam-Participants` set `rank`= (case ';
+  totalRankingData.map(
+    (rankingData: participantRankingInterface, index: number) => {
+      updateQuery +=
+        " when `participantId`='" + rankingData.id + "' then " + index + 1;
+    }
+  );
+  updateQuery += " end) where `examId`='" + examId + "';";
+  const [rows] = await db.execute(updateQuery);
+  if (!rows.affectedRows)
+    throw new CustomError('Error while rank update!', 500);
 };
 
 // Note : Evaluate exam modifies question data from arrays to hashmaps for algorithim purposes!
-export const evaluateExam = async (id: String | undefined) => {
+export const evaluateExam = async (id: string | undefined) => {
   const db = getDb();
   let query;
   query = 'select * from `Exam` where id=? limit 1';
@@ -140,8 +154,8 @@ export const evaluateExam = async (id: String | undefined) => {
     questionsObj[question.id] = question;
   });
   examData.questions = questionsObj;
-  query = 'select * from `Exam-Participants` where `examId`=?';
-  const [participantRows] = await db.execute(query, [id]);
+  query = 'select * from `Exam-Participants` where `examId`=? and `virtual`=?';
+  const [participantRows] = await db.execute(query, [id, false]);
   if (participantRows.length > 0) {
     let totalRankingData: participantRankingInterface[] = [];
     let updateQuery = 'update `Exam-Participants` set `totalScore`= (case ';
@@ -167,7 +181,7 @@ export const evaluateExam = async (id: String | undefined) => {
     updateQuery += " end) where `examId`='" + id + "';";
     let [rows] = await db.execute(updateQuery);
     if (!rows.affectedRows) throw new CustomError('Score update error!', 500);
-    await evaluateRanking(totalRankingData);
+    await evaluateRanking(id, totalRankingData);
   }
   query = 'update `Exam` set `ongoing`=?,`finished`=? where `id`=?';
   await db.execute(query, [false, true, id]);

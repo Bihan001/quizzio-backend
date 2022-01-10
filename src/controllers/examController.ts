@@ -196,13 +196,20 @@ export const registerInExam = catchAsync(
     const email = req.user?.email;
     //check if the ids are valid then insert in exam-participants table
     query =
-      'select isPrivate,userId as creatorId,count(*) as examExists,finished from `Exam` where `id`=? limit 1';
+      'select isPrivate,userId as creatorId,count(*) as examExists,finished,startTime,duration from `Exam` where `id`=? limit 1';
     let [rows] = await db.execute(query, [examId]);
     // console.log(rows);
-    let { isPrivate, creatorId, examExists, finished } = rows[0];
+    let { isPrivate, creatorId, examExists, finished, startTime, duration } =
+      rows[0];
     if (!examExists) throw new CustomError('Exam not Found', 500);
     if (creatorId === userId)
       throw new CustomError('Creator cannot give Exam !', 500);
+    const currTime = new Date().getTime();
+    if (currTime >= startTime && currTime <= startTime + duration + 120000)
+      throw new CustomError(
+        'Not a valid time to register! Let the evaluation finish!',
+        500
+      );
     if (isPrivate) {
       query =
         'select count(*) as userAllowed from `Private-Exam-Emails` where `email`=? limit 1';
