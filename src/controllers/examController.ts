@@ -73,9 +73,9 @@ export const getExamDetails = catchAsync(
     let query =
       "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
     let [rows] = await db.execute(query, [examId]);
+    if (rows.length != 1) throw new CustomError('Exam not found', 500);
     parseExam(rows[0]);
     rows[0].user = JSON.parse(rows[0].user);
-    if (rows.length != 1) throw new CustomError('Exam not found', 500);
     res.status(200).json(SuccessResponse(rows[0], 'Exam Found !'));
   }
 );
@@ -115,7 +115,7 @@ export const createExam = catchAsync(
           500
         );
     }
-    // scheduleExam(data.id, data.date, data.duration);
+    scheduleExam(data.id, data.startTime, data.duration);
     return res.status(200).json(SuccessResponse({}, 'Exam Created!'));
   }
 );
@@ -191,8 +191,9 @@ export const registerInExam = catchAsync(
   async (req: CustomRequest, res: Response) => {
     const db = getDb();
     let query;
-    const { examId, email } = req.body;
+    const { examId } = req.body;
     const userId = req.user?.id;
+    const email = req.user?.email;
     //check if the ids are valid then insert in exam-participants table
     query =
       'select isPrivate,userId as creatorId,count(*) as examExists,finished from `Exam` where `id`=? limit 1';
@@ -281,8 +282,8 @@ export const submitExam = catchAsync(
 export const forceEvaluateExam = catchAsync(
   async (req: Request, res: Response) => {
     const id: any = req.query.id;
-    if (await evaluateExam(id)) res.status(200).send('Evaluation Completed!');
-    else throw new CustomError('Error occured while evaluating', 500);
+    await evaluateExam(id);
+    res.status(200).send('Evaluation Completed!');
   }
 );
 

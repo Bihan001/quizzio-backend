@@ -4,9 +4,12 @@ import {
   participantDataInterface,
   answerInterface,
   answersObjInterface,
+  participantRankingInterface,
+  participantRankingData,
 } from './CustomInterfaces/ParticipantDataInterfaces';
 import { examInterface } from './CustomInterfaces/ExamInterface';
 import { evaluateQuestion } from './questionFunctions';
+import CustomError from '../errors/custom-error';
 
 export const parseExam = (examObject: examInterface): examInterface => {
   examObject.tags = JSON.parse(examObject.tags);
@@ -52,7 +55,7 @@ export const scheduleExam = (id: String, date: number, duration: number) => {
     destroyScheduler(id + 'start');
   });
 
-  scheduler.scheduleJob(id + 'end', new Date(date + duration), () => {
+  scheduler.scheduleJob(id + 'end', new Date(date + duration + 120000), () => {
     evaluateExam(id);
     console.log(id, ' Ended ');
     destroyScheduler(id + 'end');
@@ -94,7 +97,7 @@ export const removeCorrectOptions = (examObject: examInterface) => {
 export const evaluateParticipantData = (
   examData: examInterface,
   participantAnswers: answersObjInterface
-): Number => {
+): number => {
   console.log(participantAnswers, ' ', examData.questions);
   let totalScore = 0;
   Object.keys(participantAnswers).map((key) => {
@@ -108,15 +111,29 @@ export const evaluateParticipantData = (
   return totalScore;
 };
 
+const evaluateRanking = async (totalRankingData: participantRankingData[]) => {
+  totalRankingData.sort(
+    (a: participantRankingInterface, b: participantRankingInterface) => {
+      if (a.totalScore > b.totalScore) return -1;
+      else if (b.totalScore > a.totalScore) return 1;
+      else {
+        let aFinishTime = a.finishTime || new Date().getTime() + 120000;
+        let bFinishTime = b.finishTime || new Date().getTime() + 120000;
+        return aFinishTime - bFinishTime;
+      }
+    }
+  );
+  console.log('rank sorted data is:', totalRankingData);
+  throw new CustomError('Ranking error!', 500);
+};
+
 // Note : Evaluate exam modifies question data from arrays to hashmaps for algorithim purposes!
-export const evaluateExam = async (
-  id: String | undefined
-): Promise<boolean> => {
+export const evaluateExam = async (id: String | undefined) => {
   const db = getDb();
   let query;
   query = 'select * from `Exam` where id=? limit 1';
   const [examRows] = await db.execute(query, [id]);
-  if (!examRows) return false;
+  if (examRows.length != 1) throw new CustomError('Exam not found!', 500);
   let examData: examInterface = parseExam(examRows[0]);
   let questionsObj: any = {};
   examData.questions.map((question: any) => {
@@ -126,24 +143,32 @@ export const evaluateExam = async (
   query = 'select * from `Exam-Participants` where `examId`=?';
   const [participantRows] = await db.execute(query, [id]);
   if (participantRows.length > 0) {
+    let totalRankingData: participantRankingInterface[] = [];
     let updateQuery = 'update `Exam-Participants` set `totalScore`= (case ';
     participantRows.map((data: participantDataInterface) => {
       let participantAnswers: answersObjInterface = JSON.parse(
         data.answers || '{}'
       );
-      let totalScore: Number = evaluateParticipantData(
+      let totalScore: number = evaluateParticipantData(
         examData,
         participantAnswers
       );
       updateQuery +=
         " when `participantId`='" + data.participantId + "' then " + totalScore;
-      console.log(data.participantId, ' got : ', totalScore);
+      // console.log(data.participantId, ' got : ', totalScore);
+      totalRankingData.push(
+        new participantRankingData(
+          data.participantId,
+          totalScore,
+          data.finishTime
+        )
+      );
     });
     updateQuery += " end) where `examId`='" + id + "';";
     let [rows] = await db.execute(updateQuery);
-    if (!rows.affectedRows) return false;
+    if (!rows.affectedRows) throw new CustomError('Score update error!', 500);
+    await evaluateRanking(totalRankingData);
   }
   query = 'update `Exam` set `ongoing`=?,`finished`=? where `id`=?';
   await db.execute(query, [false, true, id]);
-  return true;
 };

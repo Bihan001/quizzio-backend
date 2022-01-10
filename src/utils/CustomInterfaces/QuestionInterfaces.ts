@@ -3,16 +3,16 @@ import { evaluateQuestion } from '../questionFunctions';
 interface questionInterface {
   id: string;
   question: string;
-  marks: Number;
-  negMarks: Number;
+  marks: number;
+  negMarks: number;
 }
 
 export interface mcqInterface extends questionInterface {
   type: 'mcq';
-  correctOption: Number[];
+  correctOption: number[];
   options: [
     {
-      id: Number;
+      id: number;
       data: string;
     }
   ];
@@ -20,10 +20,10 @@ export interface mcqInterface extends questionInterface {
 
 export interface multipleOptionsInterface extends questionInterface {
   type: 'multipleOptions';
-  correctOption: Number[];
+  correctOption: number[];
   options: [
     {
-      id: Number;
+      id: number;
       data: string;
     }
   ];
