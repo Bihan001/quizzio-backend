@@ -8,6 +8,7 @@ router.get('/question-types', examController.getQuestionTypes);
 router.get('/create-tables', examController.createTables);
 router.post('/create', auth, examController.createExam);
 router.get('/evaluate/force', examController.forceEvaluateExam);
+router.get('/exam-registered', auth, examController.examRegisterStatus);
 router.patch('/:id', auth, examController.editExam);
 router.post('/all', examController.getExams);
 router.get('/:id', examController.getExamDetails);

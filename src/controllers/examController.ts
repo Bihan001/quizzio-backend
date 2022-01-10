@@ -37,7 +37,7 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
 
   //Exam-Participants table========
   query =
-    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,virtual boolean default False,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
+    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,virtual boolean default False,rank boolean default 0,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
   result = await db.execute(query);
   if (!result)
     throw new CustomError('Exam-Participants table not created!', 500);
@@ -312,5 +312,24 @@ export const getQuestionTypes = catchAsync(
     res
       .status(200)
       .json(SuccessResponse(questionTypes, 'The question types are :'));
+  }
+);
+
+export const examRegisterStatus = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    const userId = req.user?.id;
+    const examId = req.query.examId;
+    let query =
+      'select count(*) registered from `Exam-Participants` where `examId`=? and `participantId`=?';
+    const [rows] = await db.execute(query, [examId, userId]);
+    res
+      .status(200)
+      .json(
+        SuccessResponse(
+          { registered: rows[0].registered },
+          'Register status of the user is:'
+        )
+      );
   }
 );
