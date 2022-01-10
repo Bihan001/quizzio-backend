@@ -1,13 +1,12 @@
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import CustomError from './errors/custom-error';
-import { SuccessResponse, ErrorResponse } from './utils/response-handler';
+import express, { Request, Response, NextFunction } from "express";
+import cors from "cors";
+import CustomError from "./errors/custom-error";
+import { SuccessResponse, ErrorResponse } from "./utils/response-handler";
+import examRoutes from "./routes/api/exam/routes";
+import userRoutes from "./routes/api/user/routes";
+import utilsRoutes from "./routes/api/utils/routes";
 
-import examRoutes from './routes/api/exam/routes';
-import userRoutes from './routes/api/user/routes';
-import utilsRoutes from './routes/api/utils/routes';
-
-import { connectDatabase } from './database/dbConnection';
+import { connectDatabase } from "./database/dbConnection";
 
 const app = express();
 
@@ -20,10 +19,10 @@ app.use(
   })
 );
 app.use(express.json());
-require('dotenv').config();
-app.use('/exam', examRoutes);
-app.use('/user', userRoutes);
-app.use('/utils', utilsRoutes);
+require("dotenv").config();
+app.use("/exam", examRoutes);
+app.use("/user", userRoutes);
+app.use("/utils", utilsRoutes);
 
 //connecting database
 connectDatabase();
@@ -31,8 +30,8 @@ connectDatabase();
 
 // All middlewares goes above this
 
-app.all('*', (req: Request, res: Response, next: NextFunction) => {
-  const err = new CustomError('Non-existant route', 404);
+app.all("*", (req: Request, res: Response, next: NextFunction) => {
+  const err = new CustomError("Non-existant route", 404);
   next(err);
 });
 
