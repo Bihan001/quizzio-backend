@@ -11,6 +11,7 @@ import {
   parseExam,
   shuffleExam,
   removeCorrectOptions,
+  evaluateExam,
 } from '../utils/examFunctions';
 
 const defaultBannerImage =
@@ -36,7 +37,7 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
 
   //Exam-Participants table========
   query =
-    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,virtual boolean default False,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
+    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,virtual boolean default False,rank boolean default 0,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
   result = await db.execute(query);
   if (!result)
     throw new CustomError('Exam-Participants table not created!', 500);
@@ -57,7 +58,6 @@ export const getExams = catchAsync(async (req: Request, res: Response) => {
   let query =
     'select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants from `Exam`';
   let [rows] = await db.execute(query);
-  console.log(rows);
   rows.map((exam: any) => {
     exam = parseExam(exam);
   });
@@ -73,9 +73,9 @@ export const getExamDetails = catchAsync(
     let query =
       "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
     let [rows] = await db.execute(query, [examId]);
+    if (rows.length != 1) throw new CustomError('Exam not found', 500);
     parseExam(rows[0]);
     rows[0].user = JSON.parse(rows[0].user);
-    if (rows.length != 1) throw new CustomError('Exam not found', 500);
     res.status(200).json(SuccessResponse(rows[0], 'Exam Found !'));
   }
 );
@@ -115,7 +115,7 @@ export const createExam = catchAsync(
           500
         );
     }
-    // scheduleExam(data.id, data.date, data.duration);
+    scheduleExam(data.id, data.startTime, data.duration);
     return res.status(200).json(SuccessResponse({}, 'Exam Created!'));
   }
 );
@@ -191,8 +191,9 @@ export const registerInExam = catchAsync(
   async (req: CustomRequest, res: Response) => {
     const db = getDb();
     let query;
-    const { examId, email } = req.body;
+    const { examId } = req.body;
     const userId = req.user?.id;
+    const email = req.user?.email;
     //check if the ids are valid then insert in exam-participants table
     query =
       'select isPrivate,userId as creatorId,count(*) as examExists,finished from `Exam` where `id`=? limit 1';
@@ -239,14 +240,15 @@ export const startExam = catchAsync(
     query =
       'select count(*) as userRegistered,virtual from `Exam-Participants` where `participantId`=? limit 1';
     let [rows] = await db.execute(query, [userId]);
-    if (!rows[0].userRegistered && examRows[0].isPrivate)
+    console.log(rows);
+    if (!rows[0].userRegistered)
       throw new CustomError('User not yet Registered !', 500);
     if (rows[0].virtual)
       return res
         .status(200)
         .json(SuccessResponse(examRows[0], 'Virtual Exam Started !'));
-    // if (!examRows[0].ongoing)
-    //   throw new CustomError('Exam has not started yet !', 500);
+    if (!examRows[0].ongoing)
+      throw new CustomError('Exam has not started yet !', 500);
 
     //console.log(shuffleExam(examRows[0]));
     res.status(200).json(SuccessResponse(examRows[0], 'Exam Started !'));
@@ -257,8 +259,8 @@ export const submitExam = catchAsync(
   async (req: CustomRequest, res: Response) => {
     const db = getDb();
     let query;
-    const { answers, finishTime, participantId, examId } = req.body;
-    const userId = req.user?.id;
+    const { answers, finishTime, examId } = req.body;
+    const participantId = req.user?.id;
     if (!answers || !finishTime || !participantId || !examId)
       throw new CustomError('Fields are missing !', 500);
     query =
@@ -274,6 +276,14 @@ export const submitExam = catchAsync(
     res
       .status(200)
       .json(SuccessResponse(rows[0], 'Exam Submitted Successfully!'));
+  }
+);
+
+export const forceEvaluateExam = catchAsync(
+  async (req: Request, res: Response) => {
+    const id: any = req.query.id;
+    await evaluateExam(id);
+    res.status(200).send('Evaluation Completed!');
   }
 );
 
@@ -303,5 +313,24 @@ export const getQuestionTypes = catchAsync(
     res
       .status(200)
       .json(SuccessResponse(questionTypes, 'The question types are :'));
+  }
+);
+
+export const examRegisterStatus = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    const userId = req.user?.id;
+    const examId = req.query.examId;
+    let query =
+      'select count(*) registered from `Exam-Participants` where `examId`=? and `participantId`=?';
+    const [rows] = await db.execute(query, [examId, userId]);
+    res
+      .status(200)
+      .json(
+        SuccessResponse(
+          { registered: rows[0].registered },
+          'Register status of the user is:'
+        )
+      );
   }
 );

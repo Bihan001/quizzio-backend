@@ -1,21 +1,20 @@
 import scheduler from 'node-schedule';
 import { getDb } from '../database/dbConnection';
-
-interface examInterface {
-  id: string;
-  userId: string;
-  image: string;
-  tags: string;
-  questions: any;
-  startTime: Date;
-  duration: Number;
-  ongoing: boolean;
-  finished: boolean;
-}
+import {
+  participantDataInterface,
+  answerInterface,
+  answersObjInterface,
+  participantRankingInterface,
+  participantRankingData,
+} from './CustomInterfaces/ParticipantDataInterfaces';
+import { examInterface } from './CustomInterfaces/ExamInterface';
+import { evaluateQuestion } from './questionFunctions';
+import CustomError from '../errors/custom-error';
 
 export const parseExam = (examObject: examInterface): examInterface => {
   examObject.tags = JSON.parse(examObject.tags);
-  if (examObject.questions) examObject.questions = JSON.parse(examObject.questions);
+  if (examObject.questions)
+    examObject.questions = JSON.parse(examObject.questions);
   return examObject;
 };
 
@@ -29,9 +28,15 @@ function shuffleArray(array: Array<any>) {
     temporaryValue = array[currentIndex];
     array[currentIndex] = array[randomIndex];
     array[randomIndex] = temporaryValue;
-    if (array[randomIndex].type == 'mcq' || array[randomIndex].type == 'multipleOptions')
+    if (
+      array[randomIndex].type == 'mcq' ||
+      array[randomIndex].type == 'multipleOptions'
+    )
       array[randomIndex].options = shuffleArray(array[randomIndex].options);
-    if (array[currentIndex].type == 'mcq' || array[currentIndex].type == 'multipleOptions')
+    if (
+      array[currentIndex].type == 'mcq' ||
+      array[currentIndex].type == 'multipleOptions'
+    )
       array[currentIndex].options = shuffleArray(array[currentIndex].options);
   }
   return array;
@@ -43,14 +48,14 @@ export const shuffleExam = (examObject: examInterface) => {
   return examObject;
 };
 
-export const scheduleExam = (id: String, date: Date, duration: Number) => {
-  date = new Date(date);
-  scheduler.scheduleJob(id + 'start', date, () => {
+export const scheduleExam = (id: String, date: number, duration: number) => {
+  //date = new Date(date);
+  scheduler.scheduleJob(id + 'start', new Date(date), () => {
     startExam(id);
     destroyScheduler(id + 'start');
   });
-  date.setSeconds(date.getSeconds() + 15);
-  scheduler.scheduleJob(id + 'end', date, () => {
+
+  scheduler.scheduleJob(id + 'end', new Date(date + duration + 120000), () => {
     evaluateExam(id);
     console.log(id, ' Ended ');
     destroyScheduler(id + 'end');
@@ -65,17 +70,16 @@ export const startExam = async (id: String) => {
   else console.log(id, ' Error occured to start Exam');
 };
 
-export const evaluateExam = (id: String) => {
-  const db = getDb();
-};
-
 export const scheduleOnServerRestart = async () => {
   const db = getDb();
-  let query = 'select `id`,`startTime`,`duration`  from `Exam` where `startTime`>?';
-  let [rows] = await db.execute(query, [new Date()]);
+  let query =
+    'select `id`,`startTime`,`duration`  from `Exam` where `startTime`+`duration`>=?';
+  let [rows] = await db.execute(query, [new Date().getTime()]);
   if (rows.length > 0) {
     console.log(rows);
-    rows.map((exam: examInterface) => scheduleExam(exam.id, exam.startTime, exam.duration));
+    rows.map((exam: examInterface) =>
+      scheduleExam(exam.id, exam.startTime, exam.duration)
+    );
   } else console.log('No Exams to schedule!');
 };
 export const destroyScheduler = (id: any) => {
@@ -88,4 +92,83 @@ export const removeCorrectOptions = (examObject: examInterface) => {
     delete question['correctOption'];
     return question;
   });
+};
+
+export const evaluateParticipantData = (
+  examData: examInterface,
+  participantAnswers: answersObjInterface
+): number => {
+  console.log(participantAnswers, ' ', examData.questions);
+  let totalScore = 0;
+  Object.keys(participantAnswers).map((key) => {
+    let answer = participantAnswers[key];
+    let question = examData.questions[key];
+    if (!question || !answer) totalScore += 0;
+    else {
+      totalScore += evaluateQuestion[question.type](question, answer);
+    }
+  });
+  return totalScore;
+};
+
+const evaluateRanking = async (totalRankingData: participantRankingData[]) => {
+  totalRankingData.sort(
+    (a: participantRankingInterface, b: participantRankingInterface) => {
+      if (a.totalScore > b.totalScore) return -1;
+      else if (b.totalScore > a.totalScore) return 1;
+      else {
+        let aFinishTime = a.finishTime || new Date().getTime() + 120000;
+        let bFinishTime = b.finishTime || new Date().getTime() + 120000;
+        return aFinishTime - bFinishTime;
+      }
+    }
+  );
+  console.log('rank sorted data is:', totalRankingData);
+  throw new CustomError('Ranking error!', 500);
+};
+
+// Note : Evaluate exam modifies question data from arrays to hashmaps for algorithim purposes!
+export const evaluateExam = async (id: String | undefined) => {
+  const db = getDb();
+  let query;
+  query = 'select * from `Exam` where id=? limit 1';
+  const [examRows] = await db.execute(query, [id]);
+  if (examRows.length != 1) throw new CustomError('Exam not found!', 500);
+  let examData: examInterface = parseExam(examRows[0]);
+  let questionsObj: any = {};
+  examData.questions.map((question: any) => {
+    questionsObj[question.id] = question;
+  });
+  examData.questions = questionsObj;
+  query = 'select * from `Exam-Participants` where `examId`=?';
+  const [participantRows] = await db.execute(query, [id]);
+  if (participantRows.length > 0) {
+    let totalRankingData: participantRankingInterface[] = [];
+    let updateQuery = 'update `Exam-Participants` set `totalScore`= (case ';
+    participantRows.map((data: participantDataInterface) => {
+      let participantAnswers: answersObjInterface = JSON.parse(
+        data.answers || '{}'
+      );
+      let totalScore: number = evaluateParticipantData(
+        examData,
+        participantAnswers
+      );
+      updateQuery +=
+        " when `participantId`='" + data.participantId + "' then " + totalScore;
+      // console.log(data.participantId, ' got : ', totalScore);
+      totalRankingData.push(
+        new participantRankingData(
+          data.participantId,
+          totalScore,
+          data.finishTime
+        )
+      );
+    });
+    updateQuery += " end) where `examId`='" + id + "';";
+    let [rows] = await db.execute(updateQuery);
+    if (!rows.affectedRows) throw new CustomError('Score update error!', 500);
+    await evaluateRanking(totalRankingData);
+  }
+  query = 'update `Exam` set `ongoing`=?,`finished`=? where `id`=?';
+  await db.execute(query, [false, true, id]);
 };

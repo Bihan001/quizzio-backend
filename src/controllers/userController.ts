@@ -13,7 +13,7 @@ const defaultDp =
 
 export const getCurrentUser = catchAsync(
   async (req: CustomRequest, res: Response) => {
-    return res.status(200).json(req.user);
+    return res.status(200).json(SuccessResponse(req.user, 'User found'));
   }
 );
 
@@ -138,5 +138,17 @@ export const getExamHosted = catchAsync(
       'select id,name,description,image,userId,tags,startTime,duration,ongoing,finished,isPrivate from `Exam` where `userId`=?';
     const [rows] = await db.execute(query, [userId]);
     res.status(200).json(SuccessResponse(rows, 'The Exam hosted are'));
+  }
+);
+
+export const getExamGiven = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    const userId = req.user?.id;
+    console.log(req.user);
+    const query =
+      'select e.* from `Exam` as e,`Exam-Participants` as ep where ep.`examId`=e.`id` and ep.`participantId`=?';
+    const [rows] = await db.execute(query, [userId]);
+    res.status(200).json(SuccessResponse(rows, 'Exams given are : '));
   }
 );
