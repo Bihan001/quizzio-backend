@@ -2,7 +2,7 @@ import catchAsync from '../utils/catchAsync';
 import { SuccessResponse } from '../utils/response-handler';
 import CustomError from '../errors/custom-error';
 import { Response, Request, NextFunction } from 'express';
-import { getDb } from '../database/dbConnection';
+import db, { getDb } from '../database/dbConnection';
 import { v4 as uuid } from 'uuid';
 import { CustomRequest } from '../utils/CustomInterfaces/CustomRequest';
 import {
@@ -13,6 +13,7 @@ import {
   removeCorrectOptions,
   evaluateExam,
 } from '../utils/examFunctions';
+import { parse } from 'path';
 
 const defaultBannerImage =
   'https://image.freepik.com/free-vector/online-exam-isometric-web-banner_33099-2305.jpg';
@@ -92,7 +93,7 @@ export const createExam = catchAsync(
       data.id,
       data.name,
       data.description || ' ',
-      data.image || defaultBannerImage,
+      data.image?.trim() || defaultBannerImage,
       userId,
       JSON.stringify(data.tags),
       JSON.stringify(data.questions),
@@ -150,7 +151,7 @@ export const editExam = catchAsync(
     let result1 = await db.execute(updateExam, [
       name,
       description || '',
-      image || defaultBannerImage,
+      image.trim() || defaultBannerImage,
       JSON.stringify(tags),
       JSON.stringify(questions),
       date,
@@ -245,11 +246,13 @@ export const startExam = catchAsync(
     shuffleExam(examRows[0]);
     removeCorrectOptions(examRows[0]);
     query =
-      'select count(*) as userRegistered,virtual from `Exam-Participants` where `participantId`=? limit 1';
-    let [rows] = await db.execute(query, [userId]);
+      'select count(*) as userRegistered,virtual,answers from `Exam-Participants` where `participantId`=? and `examId`=? limit 1';
+    let [rows] = await db.execute(query, [userId, examId]);
     console.log(rows);
     if (!rows[0].userRegistered)
       throw new CustomError('User not yet Registered !', 500);
+    if (rows[0].answers)
+      throw new CustomError('Answers already Submitted!', 500);
     if (rows[0].virtual)
       return res
         .status(200)
@@ -271,8 +274,16 @@ export const submitExam = catchAsync(
     if (!answers || !finishTime || !participantId || !examId)
       throw new CustomError('Fields are missing !', 500);
     query =
+      'select `startTime`+`duration` as `endTime` from `Exam` where `id`=? limit 1';
+    let [rows] = await db.execute(query, [examId]);
+    if (rows.length != 1) throw new CustomError('Exam not found!', 500);
+    if (finishTime > rows[0].endTime + 15000)
+      //extra 15secs
+      throw new CustomError('Not a valid time to submit! Exam Finished!', 500);
+
+    query =
       'update `Exam-Participants` set `answers`=? , `finishTime`=? where  `participantId`=?  and `examId`=?';
-    let [rows] = await db.execute(query, [
+    [rows] = await db.execute(query, [
       JSON.stringify(answers),
       finishTime,
       participantId,
@@ -339,5 +350,24 @@ export const examRegisterStatus = catchAsync(
           'Register status of the user is:'
         )
       );
+  }
+);
+
+export const getExamSolution = catchAsync(
+  async (req: CustomRequest, res: Response) => {
+    const db = getDb();
+    const examId = req.query.examId;
+    const userId = req.user?.id;
+    let examData;
+    let query = 'select * from `Exam` where `id`=? limit 1';
+    let [rows] = await db.execute(query, [examId]);
+    if (rows.length != 1) throw new CustomError('Exam not found!', 500);
+    examData = parseExam(rows[0]);
+    let questionsObj: any = {};
+    examData.questions.map((question: any) => {
+      questionsObj[question.id] = question;
+    });
+    examData.questions = questionsObj;
+    res.status(200).json(SuccessResponse(examData, 'Your solution is :'));
   }
 );

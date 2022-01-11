@@ -98,13 +98,15 @@ export const evaluateParticipantData = (
   examData: examInterface,
   participantAnswers: answersObjInterface
 ): number => {
-  console.log(participantAnswers, ' ', examData.questions);
+  // console.log(participantAnswers, ' ', examData.questions);
   let totalScore = 0;
   Object.keys(participantAnswers).map((key) => {
     let answer = participantAnswers[key];
     let question = examData.questions[key];
-    if (!question || !answer) totalScore += 0;
-    else {
+    if (!question || !answer || !(question.type === answer.type)) {
+      console.log('error in question :', question, ' answer: ', answer);
+      totalScore += 0;
+    } else {
       totalScore += evaluateQuestion[question.type](question, answer);
     }
   });
@@ -163,6 +165,7 @@ export const evaluateExam = async (id: string | undefined) => {
       let participantAnswers: answersObjInterface = JSON.parse(
         data.answers || '{}'
       );
+      // console.log('xxxxxx ', participantAnswers);
       let totalScore: number = evaluateParticipantData(
         examData,
         participantAnswers

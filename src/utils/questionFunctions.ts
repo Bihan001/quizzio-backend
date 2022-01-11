@@ -12,7 +12,7 @@ const evaluateMCQ = (
   answer: answerInterface
 ): Number => {
   if (question.correctOption[0] === answer.answer[0]) return question.marks;
-  return question.negMarks;
+  return -question.negMarks;
 };
 
 const evaluateMultipleOptions = (
@@ -23,7 +23,7 @@ const evaluateMultipleOptions = (
   let correctOptions = [...question.correctOption].sort();
   if (correctOptions.every((val, index) => val === participantAnsOpts[index]))
     return question.marks;
-  return question.negMarks;
+  return -question.negMarks;
 };
 
 const evaluateFillInTheBlanks = (
@@ -33,7 +33,7 @@ const evaluateFillInTheBlanks = (
   return question.correctOption.toLowerCase() ===
     answer.answer.toString().toLowerCase()
     ? question.marks
-    : question.negMarks;
+    : -question.negMarks;
 };
 
 export const evaluateQuestion: evaluateQuestionInterface = {
