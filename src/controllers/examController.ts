@@ -374,6 +374,7 @@ export const getExamSolution = catchAsync(
       'select answers from `Exam-Participants` where `participantId`=? and `examId`=? limit 1';
     [rows] = await db.execute(query, [userId, examId]);
     if (rows.length != 1) throw new CustomError('Error finding answers!', 500);
+    if (!rows[0].answers) throw new CustomError('Answers Null!', 500);
     let answers = JSON.parse(rows[0].answers);
     let examWithUserAns = getExamWithUserAns(examData, answers);
     res
