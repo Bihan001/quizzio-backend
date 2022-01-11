@@ -129,12 +129,13 @@ const evaluateRanking = async (
       }
     }
   );
-  // console.log('rank sorted data is:', totalRankingData);
+  console.log('rank sorted data is:', totalRankingData);
   let updateQuery = 'update `Exam-Participants` set `rank`= (case ';
   totalRankingData.map(
     (rankingData: participantRankingInterface, index: number) => {
+      let rank = index + 1;
       updateQuery +=
-        " when `participantId`='" + rankingData.id + "' then " + index + 1;
+        " when `participantId`='" + rankingData.id + "' then " + rank;
     }
   );
   updateQuery += " end) where `examId`='" + examId + "';";
