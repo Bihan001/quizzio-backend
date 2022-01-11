@@ -125,6 +125,24 @@ export const editUser = catchAsync(
   async (req: CustomRequest, res: Response) => {
     const db = getDb();
     const userId = req.user?.id;
+    const { name, bio, institution, phoneNumber, dob, address, image, gender } =
+      req.body;
+    if (!name || !institution || !phoneNumber || !dob || !gender)
+      throw new CustomError('Some Fields are missing !', 500);
+    let query =
+      'update `User` set `name`=?, bio=?, `institution`=?, `phoneNumber`=?, `dob`=?, `address`=?, `image`=?, `gender`=? where `id`=?';
+    const [rows] = await db.execute(query, [
+      name,
+      bio,
+      institution,
+      phoneNumber,
+      dob,
+      address,
+      image,
+      gender,
+      userId,
+    ]);
+    if (!rows.affectedRows) throw new CustomError('User Not updated', 500);
     return res.status(200).json(SuccessResponse(req.user, 'User Updated!'));
   }
 );

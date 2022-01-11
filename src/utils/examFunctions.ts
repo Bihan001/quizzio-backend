@@ -7,9 +7,14 @@ import {
   participantRankingInterface,
   participantRankingData,
 } from './CustomInterfaces/ParticipantDataInterfaces';
-import { examInterface } from './CustomInterfaces/ExamInterface';
+import { examInterface, RootObject } from './CustomInterfaces/ExamInterface';
 import { evaluateQuestion } from './questionFunctions';
 import CustomError from '../errors/custom-error';
+import {
+  fillInTheBlanksInterface,
+  mcqInterface,
+  multipleOptionsInterface,
+} from './CustomInterfaces/QuestionInterfaces';
 
 export const parseExam = (examObject: examInterface): examInterface => {
   examObject.tags = JSON.parse(examObject.tags);
@@ -45,6 +50,31 @@ function shuffleArray(array: Array<any>) {
 export const shuffleExam = (examObject: examInterface) => {
   examObject.questions = shuffleArray(examObject.questions);
   // console.log(examObject.questions);
+  return examObject;
+};
+
+const getDefaultAns = (type: string) => {
+  if (type == 'mcq' || type == 'multipleOptions') return [];
+  return ''; //this means fillInTheBlanks type
+};
+
+export const getExamWithUserAns = (
+  examObject: examInterface,
+  answers: answersObjInterface
+) => {
+  let questions = examObject.questions;
+  Object.keys(questions).map((questionId: number | string) => {
+    let answer = answers[questionId].answer;
+    let question: RootObject = questions[questionId];
+    if (!answer) answer = getDefaultAns(question.type); //this is triggered if the answer is not available then a default ans value is taken
+    question.givenOption = answer;
+    return question;
+  });
+  //converting back questions obj to questions array
+  let questionsArray = Object.keys(questions).map(
+    (questionId: number | string) => questions[questionId]
+  );
+  examObject.questions = questionsArray;
   return examObject;
 };
 

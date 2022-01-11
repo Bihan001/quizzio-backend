@@ -5,10 +5,10 @@ interface questionInterface {
   question: string;
   marks: number;
   negMarks: number;
+  type: string;
 }
 
 export interface mcqInterface extends questionInterface {
-  type: 'mcq';
   correctOption: number[];
   options: [
     {
@@ -19,7 +19,6 @@ export interface mcqInterface extends questionInterface {
 }
 
 export interface multipleOptionsInterface extends questionInterface {
-  type: 'multipleOptions';
   correctOption: number[];
   options: [
     {
@@ -29,7 +28,6 @@ export interface multipleOptionsInterface extends questionInterface {
   ];
 }
 export interface fillInTheBlanksInterface extends questionInterface {
-  type: 'fillInTheBlanks';
   correctOption: string;
 }
 

@@ -12,6 +12,7 @@ import {
   shuffleExam,
   removeCorrectOptions,
   evaluateExam,
+  getExamWithUserAns,
 } from '../utils/examFunctions';
 import { parse } from 'path';
 
@@ -353,6 +354,7 @@ export const examRegisterStatus = catchAsync(
   }
 );
 
+//this route uses customized question object for algorithm purposes!
 export const getExamSolution = catchAsync(
   async (req: CustomRequest, res: Response) => {
     const db = getDb();
@@ -368,6 +370,14 @@ export const getExamSolution = catchAsync(
       questionsObj[question.id] = question;
     });
     examData.questions = questionsObj;
-    res.status(200).json(SuccessResponse(examData, 'Your solution is :'));
+    query =
+      'select answers from `Exam-Participants` where `participantId`=? and `examId`=? limit 1';
+    [rows] = await db.execute(query, [userId, examId]);
+    if (rows.length != 1) throw new CustomError('Error finding answers!', 500);
+    let answers = JSON.parse(rows[0].answers);
+    let examWithUserAns = getExamWithUserAns(examData, answers);
+    res
+      .status(200)
+      .json(SuccessResponse(examWithUserAns, 'Your solution is :'));
   }
 );
