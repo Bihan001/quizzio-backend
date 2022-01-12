@@ -19,6 +19,10 @@ import { parse } from 'path';
 const defaultBannerImage =
   'https://image.freepik.com/free-vector/online-exam-isometric-web-banner_33099-2305.jpg';
 
+export const testing = catchAsync(async (req: Request, res: Response) =>
+  res.status(200).send('Server is up and running!')
+);
+
 export const createTables = catchAsync(async (req: Request, res: Response) => {
   const db = getDb();
   let query, result;

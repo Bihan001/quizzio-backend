@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc --project .",
-    "build-prod": "npm install && npm run build"
+    "build-prod": "npm install && npm run build",
+    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install"
   },
   "author": "Ankur Saha",
   "license": "ISC",
