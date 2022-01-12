@@ -7,7 +7,11 @@ import {
   participantRankingInterface,
   participantRankingData,
 } from './CustomInterfaces/ParticipantDataInterfaces';
-import { examInterface, RootObject } from './CustomInterfaces/ExamInterface';
+import {
+  examInterface,
+  RootObject,
+  RootQuestionsObject,
+} from './CustomInterfaces/ExamInterface';
 import { evaluateQuestion } from './questionFunctions';
 import CustomError from '../errors/custom-error';
 import {
@@ -59,23 +63,19 @@ const getDefaultAns = (type: string) => {
 };
 
 export const getExamWithUserAns = (
-  examObject: examInterface,
+  examQuestions: RootQuestionsObject,
   answers: answersObjInterface
 ) => {
-  let questions = examObject.questions;
-  Object.keys(questions).map((questionId: number | string) => {
+  let questions = examQuestions;
+  let questionsArray;
+  questionsArray = Object.keys(questions).map((questionId: number | string) => {
     let answer = answers[questionId]?.answer;
     let question: RootObject = questions[questionId];
     if (!answer) answer = getDefaultAns(question.type); //this is triggered if the answer is not available then a default ans value is taken
     question.givenOption = answer;
     return question;
   });
-  //converting back questions obj to questions array
-  let questionsArray = Object.keys(questions).map(
-    (questionId: number | string) => questions[questionId]
-  );
-  examObject.questions = questionsArray;
-  return examObject;
+  return questionsArray;
 };
 
 export const scheduleExam = (id: string, date: number, duration: number) => {

@@ -22,3 +22,7 @@ export interface RootObject {
   givenOption: any;
   correctOption: any;
 }
+
+export interface RootQuestionsObject {
+  [id: string]: RootObject;
+}

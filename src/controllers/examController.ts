@@ -360,23 +360,34 @@ export const getExamSolution = catchAsync(
     const db = getDb();
     const examId = req.query.examId;
     const userId = req.user?.id;
-    let examData;
-    let query = 'select * from `Exam` where `id`=? limit 1';
+    let examQuestions;
+    let query = 'select questions,finished from `Exam` where `id`=? limit 1';
     let [rows] = await db.execute(query, [examId]);
     if (rows.length != 1) throw new CustomError('Exam not found!', 500);
-    examData = parseExam(rows[0]);
+    if (!rows[0].finished)
+      res.status(200).json(SuccessResponse(null, 'Exam not yet finished!'));
+    examQuestions = JSON.parse(rows[0].questions);
     let questionsObj: any = {};
-    examData.questions.map((question: any) => {
+    examQuestions.map((question: any) => {
       questionsObj[question.id] = question;
     });
-    examData.questions = questionsObj;
+    examQuestions = questionsObj;
     query =
       'select answers from `Exam-Participants` where `participantId`=? and `examId`=? limit 1';
     [rows] = await db.execute(query, [userId, examId]);
-    if (rows.length != 1) throw new CustomError('Error finding answers!', 500);
-    if (!rows[0].answers) throw new CustomError('Answers Null!', 500);
+    if (rows.length != 1)
+      res
+        .status(200)
+        .json(
+          SuccessResponse(
+            null,
+            'Error while finding answers!, maybe user not registered!'
+          )
+        );
+    if (!rows[0].answers)
+      res.status(200).json(SuccessResponse(null, 'Answers null!'));
     let answers = JSON.parse(rows[0].answers);
-    let examWithUserAns = getExamWithUserAns(examData, answers);
+    let examWithUserAns = getExamWithUserAns(examQuestions, answers);
     res
       .status(200)
       .json(SuccessResponse(examWithUserAns, 'Your solution is :'));
