@@ -427,7 +427,7 @@ export const getExamScores = catchAsync(
     if (rows.length != 1) throw new CustomError('Exam not found!', 500);
     if (!rows[0].finished) throw new CustomError('Exam not finished !', 500);
     query =
-      "select `participantId`, `rank`, `finishTime`, `totalScore`, (SELECT JSON_ARRAYAGG(JSON_OBJECT('participantId', ep.participantId, 'totalScore', ep.totalScore, 'rank', ep.rank, 'finishTime', ep.finishTime, 'name', u.name)) FROM `Exam-Participants` AS ep, `User` AS u WHERE ep.participantId = u.id AND ep.examId = e.examId ORDER BY ep.rank LIMIT 3) AS `topPerformers` from `Exam-Participants` AS e where `participantId`=? and `examId`=? LIMIT 1";
+      "select `participantId`, `rank`, `finishTime`, `totalScore`, (SELECT JSON_ARRAYAGG(JSON_OBJECT('participantId', ep.participantId, 'totalScore', ep.totalScore, 'rank', ep.rank, 'finishTime', ep.finishTime, 'name', u.name)) FROM `Exam-Participants` AS ep, `User` AS u WHERE ep.participantId = u.id AND ep.examId = e.examId ORDER BY ep.rank LIMIT 5) AS `topPerformers` from `Exam-Participants` AS e where `participantId`=? and `examId`=? LIMIT 1";
     [rows] = await db.execute(query, [userId, examId]);
     if (rows.length != 1) throw new CustomError('Data not found!', 500);
     rows[0].topPerformers = JSON.parse(rows[0].topPerformers);
