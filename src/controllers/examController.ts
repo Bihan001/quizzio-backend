@@ -346,10 +346,10 @@ export const getTags = catchAsync(async (req: Request, res: Response) => {
 
 export const getQuestionTypes = catchAsync(
   async (req: Request, res: Response) => {
-    const questionTypes: String[] = [
-      'mcq',
-      'multipleOptions',
-      'fillInTheBlanks',
+    const questionTypes = [
+      { label: 'MCQ Single Option', value: 'mcq' },
+      { label: 'Fill in the blanks', value: 'fillInTheBlanks' },
+      { label: 'MCQ Multiple Options', value: 'multipleOptions' },
     ];
     res
       .status(200)
