@@ -6,6 +6,11 @@ import db, { getDb } from '../database/dbConnection';
 import { v4 as uuid } from 'uuid';
 import { CustomRequest } from '../utils/CustomInterfaces/CustomRequest';
 import {
+  mcqInterface,
+  fillInTheBlanksInterface,
+  multipleOptionsInterface,
+} from '../utils/CustomInterfaces/QuestionInterfaces';
+import {
   scheduleExam,
   destroyScheduler,
   parseExam,
@@ -77,11 +82,24 @@ export const getExamDetails = catchAsync(
     const db = getDb();
     const examId = req.params.id;
     let query =
-      "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
+      "select id,name,description,questions,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
     let [rows] = await db.execute(query, [examId]);
     if (rows.length != 1) throw new CustomError('Exam not found', 500);
     parseExam(rows[0]);
+    let totalMarks = 0;
+    rows[0].questions?.map(
+      (
+        question:
+          | mcqInterface
+          | multipleOptionsInterface
+          | fillInTheBlanksInterface
+      ) => {
+        totalMarks += question.marks;
+      }
+    );
     rows[0].user = JSON.parse(rows[0].user);
+    rows[0].totalMarks = totalMarks;
+    delete rows[0].questions;
     res.status(200).json(SuccessResponse(rows[0], 'Exam Found !'));
   }
 );
