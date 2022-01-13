@@ -66,20 +66,27 @@ exports.getExams = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, voi
         .json((0, response_handler_1.SuccessResponse)(rows, 'These are upcoming and ongoing Exams !'));
 }));
 exports.getExamDetails = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     const db = (0, dbConnection_1.getDb)();
     const examId = req.params.id;
-    let query = "select id,name,description,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
+    let query = "select id,name,description,questions,image,tags,startTime,duration,ongoing,isPrivate,(SELECT COUNT(ep.id) FROM `Exam-Participants` AS ep WHERE ep.examId = Exam.id) AS numberOfParticipants, (SELECT JSON_OBJECT('id',u.id,'name',u.name,'image', u.image) FROM User AS u WHERE u.id = Exam.userId) AS user from Exam where id=? limit 1";
     let [rows] = yield db.execute(query, [examId]);
     if (rows.length != 1)
         throw new custom_error_1.default('Exam not found', 500);
     (0, examFunctions_1.parseExam)(rows[0]);
+    let totalMarks = 0;
+    (_a = rows[0].questions) === null || _a === void 0 ? void 0 : _a.map((question) => {
+        totalMarks += question.marks;
+    });
     rows[0].user = JSON.parse(rows[0].user);
+    rows[0].totalMarks = totalMarks;
+    delete rows[0].questions;
     res.status(200).json((0, response_handler_1.SuccessResponse)(rows[0], 'Exam Found !'));
 }));
 exports.createExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _b, _c;
     const db = (0, dbConnection_1.getDb)();
-    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.id;
     let data = req.body || {};
     let query = 'insert into `Exam` (`id`,`name`,`description`,`image`,`userId`,`tags`,`questions`,`startTime`,`duration`,`isPrivate`) values(?,?,?,?,?,?,?,?,?,?)';
     data.id = (0, uuid_1.v4)();
@@ -87,7 +94,7 @@ exports.createExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
         data.id,
         data.name,
         data.description || ' ',
-        ((_b = data.image) === null || _b === void 0 ? void 0 : _b.trim()) || defaultBannerImage,
+        ((_c = data.image) === null || _c === void 0 ? void 0 : _c.trim()) || defaultBannerImage,
         userId,
         JSON.stringify(data.tags),
         JSON.stringify(data.questions),
@@ -112,11 +119,11 @@ exports.createExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, v
     return res.status(200).json((0, response_handler_1.SuccessResponse)({}, 'Exam Created!'));
 }));
 exports.editExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _c;
+    var _d;
     const db = (0, dbConnection_1.getDb)();
     // if(!req.user) throw new CustomError("User Error",404);
     const examId = req.params.id;
-    const userId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.id;
+    const userId = (_d = req.user) === null || _d === void 0 ? void 0 : _d.id;
     const { name, description, image, tags, questions, startTime, duration, isPrivate, allowedUsers, } = req.body;
     let getExamByUserId = 'select count(*) as examExists from `Exam` where `userId`=? and `id`=? limit 1';
     let [rows] = yield db.execute(getExamByUserId, [userId, examId]); //authorization to be added ! to e compared with req.user.id and req.body.userId
@@ -161,12 +168,12 @@ exports.editExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, voi
     return res.status(200).json((0, response_handler_1.SuccessResponse)({}, 'Exam Updated!'));
 }));
 exports.registerInExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _d, _e;
+    var _e, _f;
     const db = (0, dbConnection_1.getDb)();
     let query;
     const { examId } = req.body;
-    const userId = (_d = req.user) === null || _d === void 0 ? void 0 : _d.id;
-    const email = (_e = req.user) === null || _e === void 0 ? void 0 : _e.email;
+    const userId = (_e = req.user) === null || _e === void 0 ? void 0 : _e.id;
+    const email = (_f = req.user) === null || _f === void 0 ? void 0 : _f.email;
     //check if the ids are valid then insert in exam-participants table
     query =
         'select isPrivate,userId as creatorId,count(*) as examExists,finished,startTime,duration from `Exam` where `id`=? limit 1';
@@ -201,10 +208,10 @@ exports.registerInExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 
     res.status(200).send('Successfully Registered !');
 }));
 exports.startExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _f;
+    var _g;
     const db = (0, dbConnection_1.getDb)();
     const examId = req.params.id;
-    const userId = (_f = req.user) === null || _f === void 0 ? void 0 : _f.id;
+    const userId = (_g = req.user) === null || _g === void 0 ? void 0 : _g.id;
     let query = 'select * from `Exam` where `id`=? limit 1';
     let [examRows] = yield db.execute(query, [examId]);
     if (examRows.length != 1)
@@ -230,11 +237,11 @@ exports.startExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, vo
     res.status(200).json((0, response_handler_1.SuccessResponse)(examRows[0], 'Exam Started !'));
 }));
 exports.submitExam = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _g;
+    var _h;
     const db = (0, dbConnection_1.getDb)();
     let query;
     const { answers, finishTime, examId } = req.body;
-    const participantId = (_g = req.user) === null || _g === void 0 ? void 0 : _g.id;
+    const participantId = (_h = req.user) === null || _h === void 0 ? void 0 : _h.id;
     if (!answers || !finishTime || !participantId || !examId)
         throw new custom_error_1.default('Fields are missing !', 500);
     query =
@@ -281,18 +288,18 @@ exports.getTags = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void
 }));
 exports.getQuestionTypes = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const questionTypes = [
-        'mcq',
-        'multipleOptions',
-        'fillInTheBlanks',
+        { label: 'MCQ Single Option', value: 'mcq' },
+        { label: 'Fill in the blanks', value: 'fillInTheBlanks' },
+        { label: 'MCQ Multiple Options', value: 'multipleOptions' },
     ];
     res
         .status(200)
         .json((0, response_handler_1.SuccessResponse)(questionTypes, 'The question types are :'));
 }));
 exports.examRegisterStatus = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _h;
+    var _j;
     const db = (0, dbConnection_1.getDb)();
-    const userId = (_h = req.user) === null || _h === void 0 ? void 0 : _h.id;
+    const userId = (_j = req.user) === null || _j === void 0 ? void 0 : _j.id;
     const examId = req.query.examId;
     let query = 'select count(*) registered from `Exam-Participants` where `examId`=? and `participantId`=?';
     const [rows] = yield db.execute(query, [examId, userId]);
@@ -302,10 +309,10 @@ exports.examRegisterStatus = (0, catchAsync_1.default)((req, res) => __awaiter(v
 }));
 //this route uses customized question object for algorithm purposes!
 exports.getExamSolution = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _j;
+    var _k;
     const db = (0, dbConnection_1.getDb)();
     const examId = req.query.examId;
-    const userId = (_j = req.user) === null || _j === void 0 ? void 0 : _j.id;
+    const userId = (_k = req.user) === null || _k === void 0 ? void 0 : _k.id;
     let examQuestions;
     let query = 'select questions,finished from `Exam` where `id`=? limit 1';
     let [rows] = yield db.execute(query, [examId]);
@@ -335,10 +342,10 @@ exports.getExamSolution = (0, catchAsync_1.default)((req, res) => __awaiter(void
         .json((0, response_handler_1.SuccessResponse)(examWithUserAns, 'Your solution is :'));
 }));
 exports.getExamScores = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _k;
+    var _l;
     const db = (0, dbConnection_1.getDb)();
     let query, rows;
-    const userId = (_k = req.user) === null || _k === void 0 ? void 0 : _k.id;
+    const userId = (_l = req.user) === null || _l === void 0 ? void 0 : _l.id;
     const examId = req.query.examId;
     query = 'select `finished` from `Exam` where `id`=? limit 1';
     [rows] = yield db.execute(query, [examId]);
@@ -347,7 +354,7 @@ exports.getExamScores = (0, catchAsync_1.default)((req, res) => __awaiter(void 0
     if (!rows[0].finished)
         throw new custom_error_1.default('Exam not finished !', 500);
     query =
-        "select `participantId`, `rank`, `finishTime`, `totalScore`, (SELECT JSON_ARRAYAGG(JSON_OBJECT('participantId', ep.participantId, 'totalScore', ep.totalScore, 'rank', ep.rank, 'finishTime', ep.finishTime, 'name', u.name)) FROM `Exam-Participants` AS ep, `User` AS u WHERE ep.participantId = u.id AND ep.examId = e.examId ORDER BY ep.rank LIMIT 3) AS `topPerformers` from `Exam-Participants` AS e where `participantId`=? and `examId`=? LIMIT 1";
+        "select `participantId`, `rank`, `finishTime`, `totalScore`, (SELECT JSON_ARRAYAGG(JSON_OBJECT('participantId', ep.participantId, 'totalScore', ep.totalScore, 'rank', ep.rank, 'finishTime', ep.finishTime, 'name', u.name)) FROM `Exam-Participants` AS ep, `User` AS u WHERE ep.participantId = u.id AND ep.examId = e.examId ORDER BY ep.rank LIMIT 5) AS `topPerformers` from `Exam-Participants` AS e where `participantId`=? and `examId`=? LIMIT 1";
     [rows] = yield db.execute(query, [userId, examId]);
     if (rows.length != 1)
         throw new custom_error_1.default('Data not found!', 500);
