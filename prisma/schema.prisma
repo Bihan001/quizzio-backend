@@ -11,49 +11,50 @@ datasource db {
 }
 
 model User {
-  id                Int                      @id @default(autoincrement())
-  name              String
-  email             String                   @unique
-  bio               String?
-  dob               DateTime
-  address           String?                  @db.VarChar(255)
-  country           String?
-  profile_image     String?
-  password          String
-  latest_degree     String?
-  Institution       String?
-  gender            String?
-  country_code      Int
-  phone             String
-  Exam              Exam[]
-  created_at        DateTime                 @default(now())
-  updated_at        DateTime                 @updatedAt
-  exam_participants ExamParticipant[]
-  user_submissions  QuestionExamSubmission[]
+  id                   Int               @id @default(autoincrement())
+  name                 String
+  email                String            @unique
+  bio                  String?
+  dob                  DateTime
+  address              String?           @db.VarChar(255)
+  country              String?
+  profile_image        String?
+  password             String
+  latest_degree        String?
+  institution          String?
+  gender               String?
+  country_code         Int
+  phone                String
+  exams_created        Exam[]
+  created_at           DateTime          @default(now())
+  updated_at           DateTime          @updatedAt
+  exams_participated   ExamParticipant[]
+  exam_question_scores ExamSubmission[]
 
   @@map("users")
 }
 
 model Exam {
-  id                  Int                      @id @default(autoincrement())
-  creator_id          Int
-  creator             User                     @relation(fields: [creator_id], references: [id])
-  name                String
-  description         String?
-  banner              String?
-  thumbnail           String?
-  start_time          DateTime
-  duration            BigInt
-  ongoing             Boolean                  @default(false)
-  is_private          Boolean                  @default(false)
-  participant_count   Int                      @default(0)
-  created_at          DateTime                 @default(now())
-  updated_at          DateTime                 @updatedAt
-  exam_participants   ExamParticipant[]
-  private_exam_emails PrivateExamEmail[]
-  exam_tags           ExamTag[]
-  exam_submissions    QuestionExamSubmission[]
-  exam_questions      ExamQuestion[]
+  id                         Int                  @id @default(autoincrement())
+  creator_id                 Int
+  creator                    User                 @relation(fields: [creator_id], references: [id])
+  name                       String
+  description                String?
+  banner                     String?
+  thumbnail                  String?
+  start_time                 DateTime
+  duration                   BigInt
+  ongoing                    Boolean              @default(false)
+  is_private                 Boolean              @default(false)
+  participant_count          Int                  @default(0)
+  created_at                 DateTime             @default(now())
+  updated_at                 DateTime             @updatedAt
+  exam_participants          ExamParticipant[]
+  private_exam_emails        PrivateExamEmail[]
+  exam_tags                  ExamTag[]
+  exam_question_scores       ExamSubmission[]
+  exam_questions             ExamQuestion[]
+  exam_questions_submissions QuestionSubmission[]
 
   @@map("exams")
 }
@@ -101,15 +102,17 @@ model ExamTag {
 }
 
 model Question {
-  id             Int                      @id @default(autoincrement())
-  question       String
-  variant_id     Int
-  variant        QuestionVariant          @relation(fields: [variant_id], references: [id])
-  solution       String
-  user_answers   QuestionExamSubmission[]
-  exam_questions ExamQuestion[]
-  created_at     DateTime                 @default(now())
-  updated_at     DateTime                 @updatedAt
+  id                   Int                  @id @default(autoincrement())
+  question             String
+  variant_id           Int
+  variant              QuestionVariant      @relation(fields: [variant_id], references: [id])
+  solution             String
+  user_submissions     QuestionSubmission[]
+  exam_questions       ExamQuestion[]
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+  question_options     QuestionOption[]
+  exam_question_scores ExamSubmission[]
 
   @@map("questions")
 }
@@ -136,16 +139,36 @@ model QuestionVariant {
   @@map("question_variants")
 }
 
-model QuestionExamSubmission {
+model QuestionSubmission {
   exam_id     Int
   exam        Exam     @relation(fields: [exam_id], references: [id])
   question_id Int
   question    Question @relation(fields: [question_id], references: [id])
   user_id     Int
+  option      String
+
+  @@unique([exam_id, question_id, user_id, option])
+  @@map("question_submissions")
+}
+
+model ExamSubmission {
+  exam_id     Int      @unique
+  exam        Exam     @relation(fields: [exam_id], references: [id])
+  question_id Int
+  question    Question @relation(fields: [question_id], references: [id])
+  user_id     Int
   user        User     @relation(fields: [user_id], references: [id])
-  submission  String
   score       Int      @default(0)
 
   @@unique([exam_id, question_id, user_id])
-  @@map("question_exam_submissions")
+  @@map("exam_submissions")
+}
+
+model QuestionOption {
+  question_id Int
+  question    Question @relation(fields: [question_id], references: [id])
+  option      String
+
+  @@unique([question_id, option])
+  @@map("question_options")
 }
