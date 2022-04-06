@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int                  @id @default(autoincrement())
+  name               String
+  email              String               @unique
+  bio                String?
+  dob                DateTime
+  address            String?              @db.VarChar(255)
+  country            String?
+  profile_image      String?
+  password           String
+  latest_degree      String?
+  Institution        String?
+  gender             String?
+  country_code       Int
+  phone              String
+  Exam               Exam[]
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  exam_participants  ExamParticipant[]
+  QuestionUserAnswer QuestionUserAnswer[]
+}
+
+model Exam {
+  id                  Int                  @id @default(autoincrement())
+  creator_id          Int
+  creator             User                 @relation(fields: [creator_id], references: [id])
+  name                String
+  description         String?
+  banner              String?
+  thumbnail           String?
+  start_time          DateTime
+  duration            BigInt
+  ongoing             Boolean              @default(false)
+  is_private          Boolean              @default(false)
+  participant_count   Int                  @default(0)
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+  exam_participants   ExamParticipant[]
+  private_exam_emails PrivateExamEmail[]
+  exam_tags           ExamTag[]
+  QuestionUserAnswer  QuestionUserAnswer[]
+  exam_questions      ExamQuestion[]
+}
+
+model ExamParticipant {
+  exam_id        Int
+  participant_id Int
+  exam           Exam @relation(fields: [exam_id], references: [id])
+  user           User @relation(fields: [participant_id], references: [id])
+  score          Int?
+  finish_time    Int?
+  rank           Int?
+
+  @@unique([exam_id, participant_id])
+}
+
+model PrivateExamEmail {
+  examId Int
+  exam   Exam   @relation(fields: [examId], references: [id])
+  email  String
+
+  @@unique([examId, email])
+}
+
+model Tag {
+  id         Int       @id @default(autoincrement())
+  tag        String    @unique
+  exam_tags  ExamTag[]
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+}
+
+model ExamTag {
+  exam_id Int
+  tag_id  Int
+  exam    Exam @relation(fields: [exam_id], references: [id])
+  tag     Tag  @relation(fields: [tag_id], references: [id])
+
+  @@unique([exam_id, tag_id])
+}
+
+model Question {
+  id             Int                  @id @default(autoincrement())
+  question       String
+  variant_id     Int
+  variant        QuestionVariant      @relation(fields: [variant_id], references: [id])
+  solution       String
+  user_answers   QuestionUserAnswer[]
+  exam_questions ExamQuestion[]
+  created_at     DateTime             @default(now())
+  updated_at     DateTime             @updatedAt
+}
+
+model ExamQuestion {
+  exam_id       Int
+  question_id   Int
+  exam          Exam     @relation(fields: [exam_id], references: [id])
+  question      Question @relation(fields: [question_id], references: [id])
+  mark          Int
+  negative_mark Int
+
+  @@unique([exam_id, question_id])
+}
+
+model QuestionVariant {
+  id         Int        @id @default(autoincrement())
+  variant    String     @unique
+  questions  Question[]
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+}
+
+model QuestionUserAnswer {
+  exam_id      Int
+  exam         Exam     @relation(fields: [exam_id], references: [id])
+  question_id  Int
+  question     Question @relation(fields: [question_id], references: [id])
+  user_id      Int
+  user         User     @relation(fields: [user_id], references: [id])
+  given_answer String
+  score        Int      @default(0)
+  @@unique([exam_id, question_id, user_id])
+}
