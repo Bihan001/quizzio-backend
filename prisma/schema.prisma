@@ -11,47 +11,51 @@ datasource db {
 }
 
 model User {
-  id                 Int                  @id @default(autoincrement())
-  name               String
-  email              String               @unique
-  bio                String?
-  dob                DateTime
-  address            String?              @db.VarChar(255)
-  country            String?
-  profile_image      String?
-  password           String
-  latest_degree      String?
-  Institution        String?
-  gender             String?
-  country_code       Int
-  phone              String
-  Exam               Exam[]
-  created_at         DateTime             @default(now())
-  updated_at         DateTime             @updatedAt
-  exam_participants  ExamParticipant[]
-  QuestionUserAnswer QuestionUserAnswer[]
+  id                Int                      @id @default(autoincrement())
+  name              String
+  email             String                   @unique
+  bio               String?
+  dob               DateTime
+  address           String?                  @db.VarChar(255)
+  country           String?
+  profile_image     String?
+  password          String
+  latest_degree     String?
+  Institution       String?
+  gender            String?
+  country_code      Int
+  phone             String
+  Exam              Exam[]
+  created_at        DateTime                 @default(now())
+  updated_at        DateTime                 @updatedAt
+  exam_participants ExamParticipant[]
+  user_submissions  QuestionExamSubmission[]
+
+  @@map("users")
 }
 
 model Exam {
-  id                  Int                  @id @default(autoincrement())
+  id                  Int                      @id @default(autoincrement())
   creator_id          Int
-  creator             User                 @relation(fields: [creator_id], references: [id])
+  creator             User                     @relation(fields: [creator_id], references: [id])
   name                String
   description         String?
   banner              String?
   thumbnail           String?
   start_time          DateTime
   duration            BigInt
-  ongoing             Boolean              @default(false)
-  is_private          Boolean              @default(false)
-  participant_count   Int                  @default(0)
-  created_at          DateTime             @default(now())
-  updated_at          DateTime             @updatedAt
+  ongoing             Boolean                  @default(false)
+  is_private          Boolean                  @default(false)
+  participant_count   Int                      @default(0)
+  created_at          DateTime                 @default(now())
+  updated_at          DateTime                 @updatedAt
   exam_participants   ExamParticipant[]
   private_exam_emails PrivateExamEmail[]
   exam_tags           ExamTag[]
-  QuestionUserAnswer  QuestionUserAnswer[]
+  exam_submissions    QuestionExamSubmission[]
   exam_questions      ExamQuestion[]
+
+  @@map("exams")
 }
 
 model ExamParticipant {
@@ -64,6 +68,7 @@ model ExamParticipant {
   rank           Int?
 
   @@unique([exam_id, participant_id])
+  @@map("exam_participants")
 }
 
 model PrivateExamEmail {
@@ -72,6 +77,7 @@ model PrivateExamEmail {
   email  String
 
   @@unique([examId, email])
+  @@map("private_exam_emails")
 }
 
 model Tag {
@@ -80,6 +86,8 @@ model Tag {
   exam_tags  ExamTag[]
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
+
+  @@map("tags")
 }
 
 model ExamTag {
@@ -89,18 +97,21 @@ model ExamTag {
   tag     Tag  @relation(fields: [tag_id], references: [id])
 
   @@unique([exam_id, tag_id])
+  @@map("exam_tags")
 }
 
 model Question {
-  id             Int                  @id @default(autoincrement())
+  id             Int                      @id @default(autoincrement())
   question       String
   variant_id     Int
-  variant        QuestionVariant      @relation(fields: [variant_id], references: [id])
+  variant        QuestionVariant          @relation(fields: [variant_id], references: [id])
   solution       String
-  user_answers   QuestionUserAnswer[]
+  user_answers   QuestionExamSubmission[]
   exam_questions ExamQuestion[]
-  created_at     DateTime             @default(now())
-  updated_at     DateTime             @updatedAt
+  created_at     DateTime                 @default(now())
+  updated_at     DateTime                 @updatedAt
+
+  @@map("questions")
 }
 
 model ExamQuestion {
@@ -112,6 +123,7 @@ model ExamQuestion {
   negative_mark Int
 
   @@unique([exam_id, question_id])
+  @@map("exam_questions")
 }
 
 model QuestionVariant {
@@ -120,16 +132,20 @@ model QuestionVariant {
   questions  Question[]
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
+
+  @@map("question_variants")
 }
 
-model QuestionUserAnswer {
-  exam_id      Int
-  exam         Exam     @relation(fields: [exam_id], references: [id])
-  question_id  Int
-  question     Question @relation(fields: [question_id], references: [id])
-  user_id      Int
-  user         User     @relation(fields: [user_id], references: [id])
-  given_answer String
-  score        Int      @default(0)
+model QuestionExamSubmission {
+  exam_id     Int
+  exam        Exam     @relation(fields: [exam_id], references: [id])
+  question_id Int
+  question    Question @relation(fields: [question_id], references: [id])
+  user_id     Int
+  user        User     @relation(fields: [user_id], references: [id])
+  submission  String
+  score       Int      @default(0)
+
   @@unique([exam_id, question_id, user_id])
+  @@map("question_exam_submissions")
 }
