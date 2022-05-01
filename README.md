@@ -1,4 +1,4 @@
-# Exam Simulation: Backend
+# Quizzio: Backend
 
 Backend for the Exam Simulation project.
 
