@@ -12,6 +12,7 @@ export default (req: CustomRequest, res: Response, next: NextFunction) => {
   if (!token) throw new CustomError('Token Invalid !', 404);
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!, (err, user) => {
     if (err || !user) throw new CustomError('Token Invalid!', 404);
+    // @ts-ignore
     req.user = user;
     next();
   });

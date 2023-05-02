@@ -155,7 +155,7 @@ export const registerInExam = catchAsync(
       throw new CustomError('User already Registered !', 500);
 
     query =
-      'insert into `Exam-Participants` (`examId`,`participantId`,`virtual`) values(?,?,?)';
+      'insert into `Exam-Participants` (`examId`,`participantId`,`isVirtual`) values(?,?,?)';
     let result = await db.execute(query, [examId, userId, finished]);
     if (!result) throw new CustomError('Registering failed !', 500);
     res.status(200).send('Successfully Registered !');
@@ -171,11 +171,11 @@ export const getExam = catchAsync(async (req: CustomRequest, res: Response) => {
   examRows[0] = parseExam(examRows[0]);
   shuffleExam(examRows[0]);
   query =
-    'select count(*) as userRegistered,virtual from `Exam-Participants` where `participantId`=? limit 1';
+    'select count(*) as userRegistered,isVirtual from `Exam-Participants` where `participantId`=? limit 1';
   let [rows] = await db.execute(query, [userId]);
   if (!rows[0].userRegistered)
     throw new CustomError('User not yet Registered !', 500);
-  if (rows[0].virtual)
+  if (rows[0].isVirtual)
     return res
       .status(200)
       .json(SuccessResponse(examRows[0], 'Virtual Exam Started !'));
