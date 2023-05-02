@@ -5,9 +5,9 @@ import { scheduleOnServerRestart } from '../utils/examFunctions';
 let db: any;
 const connectDatabase = async () => {
   db = await mysql.createConnection({
-    host: 'mydbinstance.cyfjjout6pho.ap-south-1.rds.amazonaws.com',
-    user: 'subho57',
-    password: 'adminDBpassword123',
+    host: 'quizzio-db-instance.cpr6f54gzlkx.us-east-1.rds.amazonaws.com',
+    user: 'group_7',
+    password: 'abarKHELAhobe7',
     port: 3306,
     database: 'examSimulation',
     multipleStatements: true, // Prevent nested sql statements

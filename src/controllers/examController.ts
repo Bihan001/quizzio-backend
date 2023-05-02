@@ -48,7 +48,7 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
 
   //Exam-Participants table========
   query =
-    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,virtual boolean default False,rank boolean default 0,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
+    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,isVirtual boolean default False,rank boolean default 0,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
   result = await db.execute(query);
   if (!result)
     throw new CustomError('Exam-Participants table not created!', 500);
@@ -250,7 +250,7 @@ export const registerInExam = catchAsync(
       throw new CustomError('User already Registered !', 500);
 
     query =
-      'insert into `Exam-Participants` (`examId`,`participantId`,`virtual`) values(?,?,?)';
+      'insert into `Exam-Participants` (`examId`,`participantId`,`isVirtual`) values(?,?,?)';
     let result = await db.execute(query, [examId, userId, finished]);
     if (!result) throw new CustomError('Registering failed !', 500);
     res.status(200).send('Successfully Registered !');
@@ -269,14 +269,14 @@ export const startExam = catchAsync(
     shuffleExam(examRows[0]);
     removeCorrectOptions(examRows[0]);
     query =
-      'select count(*) as userRegistered,virtual,answers from `Exam-Participants` where `participantId`=? and `examId`=? limit 1';
+      'select count(*) as userRegistered,isVirtual,answers from `Exam-Participants` where `participantId`=? and `examId`=? limit 1';
     let [rows] = await db.execute(query, [userId, examId]);
     console.log(rows);
     if (!rows[0].userRegistered)
       throw new CustomError('User not yet Registered !', 500);
     if (rows[0].answers)
       throw new CustomError('Answers already Submitted!', 500);
-    if (rows[0].virtual)
+    if (rows[0].isVirtual)
       return res
         .status(200)
         .json(SuccessResponse(examRows[0], 'Virtual Exam Started !'));

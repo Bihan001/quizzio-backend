@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import path from "path";
 import CustomError from "./errors/custom-error";
 import { SuccessResponse, ErrorResponse } from "./utils/response-handler";
 import examRoutes from "./routes/api/exam/routes";
@@ -27,6 +28,15 @@ app.use("/utils", utilsRoutes);
 //connecting database
 connectDatabase();
 //===================
+
+if (process.env.NODE_ENV === 'production') {
+  //Set static folder
+  app.use(express.static('build'));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, 'build', 'index.html'));
+  });
+}
 
 // All middlewares goes above this
 

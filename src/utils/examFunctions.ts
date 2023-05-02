@@ -187,7 +187,7 @@ export const evaluateExam = async (id: string | undefined) => {
     questionsObj[question.id] = question;
   });
   examData.questions = questionsObj;
-  query = 'select * from `Exam-Participants` where `examId`=? and `virtual`=?';
+  query = 'select * from `Exam-Participants` where `examId`=? and `isVirtual`=?';
   const [participantRows] = await db.execute(query, [id, false]);
   if (participantRows.length > 0) {
     let totalRankingData: participantRankingInterface[] = [];

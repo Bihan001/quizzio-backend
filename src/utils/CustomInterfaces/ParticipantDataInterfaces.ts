@@ -5,7 +5,7 @@ export interface participantDataInterface {
   answers: any;
   totalScore: number | null;
   finishTime: number;
-  virtual: boolean;
+  isVirtual: boolean;
 }
 
 export interface answerInterface {
