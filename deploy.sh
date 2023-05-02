@@ -7,4 +7,6 @@ cp .env dist/.env
 cd ../quizzio-frontend
 npm i
 npm run build
-mv build ../quizzio-backend/dist
+mv build ../quizzio-backend/dist/
+cd ../quizzio-backend/dist
+# NODE_ENV=production pm2 start server.js --name quizzio --update-env

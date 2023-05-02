@@ -32,6 +32,11 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
   const db = getDb();
   let query, result;
 
+  await db.execute('drop table if exists `Exam-Participants`');
+  await db.execute('drop table if exists Exam');
+  await db.execute('drop table if exists User');
+  await db.execute('drop table if exists `Private-Exam-Emails`');
+
   //User table===================
   query =
     'create table User ( id varchar(50) not null, name varchar(50) , email varchar(50) ,bio longtext, dob datetime , address longtext,image longtext, password longtext ,institution longtext ,gender varchar(50),phoneNumber varchar(50) ,constraint user_pk primary key(id) )';
@@ -48,7 +53,7 @@ export const createTables = catchAsync(async (req: Request, res: Response) => {
 
   //Exam-Participants table========
   query =
-    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,isVirtual boolean default False,rank boolean default 0,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
+    'create table `Exam-Participants` (id integer auto_increment ,examId varchar(50) , participantId varchar(50) ,answers json ,totalScore integer , finishTime bigint,isVirtual boolean default False,userRank boolean default 0,constraint pk primary key(id) ,constraint fep1 foreign key (examId) references Exam(id) , constraint fep2 foreign key (participantId) references User(id))';
   result = await db.execute(query);
   if (!result)
     throw new CustomError('Exam-Participants table not created!', 500);
@@ -427,7 +432,7 @@ export const getExamScores = catchAsync(
     if (rows.length != 1) throw new CustomError('Exam not found!', 500);
     if (!rows[0].finished) throw new CustomError('Exam not finished !', 500);
     query =
-      "select `participantId`, `rank`, `finishTime`, `totalScore`, (SELECT JSON_ARRAYAGG(JSON_OBJECT('participantId', ep.participantId, 'totalScore', ep.totalScore, 'rank', ep.rank, 'finishTime', ep.finishTime, 'name', u.name)) FROM `Exam-Participants` AS ep, `User` AS u WHERE ep.participantId = u.id AND ep.examId = e.examId ORDER BY ep.rank LIMIT 5) AS `topPerformers` from `Exam-Participants` AS e where `participantId`=? and `examId`=? LIMIT 1";
+      "select `participantId`, `rank`, `finishTime`, `totalScore`, (SELECT JSON_ARRAYAGG(JSON_OBJECT('participantId', ep.participantId, 'totalScore', ep.totalScore, 'userRank', ep.userRank, 'finishTime', ep.finishTime, 'name', u.name)) FROM `Exam-Participants` AS ep, `User` AS u WHERE ep.participantId = u.id AND ep.examId = e.examId ORDER BY ep.userRank LIMIT 5) AS `topPerformers` from `Exam-Participants` AS e where `participantId`=? and `examId`=? LIMIT 1";
     [rows] = await db.execute(query, [userId, examId]);
     if (rows.length != 1) throw new CustomError('Data not found!', 500);
     rows[0].topPerformers = JSON.parse(rows[0].topPerformers);

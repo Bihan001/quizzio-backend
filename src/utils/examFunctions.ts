@@ -160,7 +160,7 @@ const evaluateRanking = async (
     }
   );
   console.log('rank sorted data is:', totalRankingData);
-  let updateQuery = 'update `Exam-Participants` set `rank`= (case ';
+  let updateQuery = 'update `Exam-Participants` set `userRank`= (case ';
   totalRankingData.map(
     (rankingData: participantRankingInterface, index: number) => {
       let rank = index + 1;
